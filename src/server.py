@@ -6,7 +6,7 @@ import xmlrpc.client
 import requests
 import re
 from contextlib import asynccontextmanager
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Response, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +19,7 @@ except (ImportError, ModuleNotFoundError):
 
 USER_DATA_DIR = os.getenv("USER_DATA_DIR", "./userdata")
 WABOT_CONFIG_PATH = os.getenv("WABOT_CONFIG_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config/config.json")))
+WABOT_SCHEDULES_PATH = os.getenv("WABOT_SCHEDULES_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config/gws.json")))
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 browser = BrowserManager(user_data_dir=USER_DATA_DIR)
@@ -99,6 +100,120 @@ def save_wabot_config(data: dict) -> bool:
             return False
     return False
 
+def load_wabot_schedules() -> list:
+    if os.path.exists(WABOT_SCHEDULES_PATH):
+        try:
+            with open(WABOT_SCHEDULES_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else [data]
+        except Exception as e:
+            print(f"[WAP Error]: Could not load schedules from {WABOT_SCHEDULES_PATH}: {e}")
+    return []
+
+def save_wabot_schedules(schedules: list) -> bool:
+    if os.path.exists(os.path.dirname(WABOT_SCHEDULES_PATH)):
+        try:
+            if os.path.exists(WABOT_SCHEDULES_PATH):
+                try:
+                    import shutil
+                    shutil.copy2(WABOT_SCHEDULES_PATH, f"{WABOT_SCHEDULES_PATH}.bak")
+                except Exception:
+                    pass
+            with open(WABOT_SCHEDULES_PATH, "w", encoding="utf-8") as f:
+                json.dump(schedules, f, indent=4)
+            return True
+        except Exception as e:
+            print(f"[WAP Error]: Could not save schedules to {WABOT_SCHEDULES_PATH}: {e}")
+            return False
+    return False
+
+def calculate_schedule_status(entry: dict) -> list:
+    from datetime import datetime, date
+    today = date.today()
+    now_time = datetime.now().time()
+    results = []
+    
+    contact = entry.get("contact_name", "Unknown")
+    schedules = entry.get("schedules", [])
+    
+    for idx, s in enumerate(schedules):
+        sched_type = s.get("type", "daily")
+        start_t_str = s.get("start_time", "00:00")
+        end_t_str = s.get("end_time", "23:59")
+        
+        is_valid_today = False
+        next_run_days = 0
+        
+        if sched_type == "daily":
+            is_valid_today = True
+        elif sched_type == "interval":
+            s_date_str = s.get("start_date")
+            interval = s.get("interval_days", 1)
+            if s_date_str:
+                try:
+                    s_date = datetime.strptime(s_date_str, "%Y-%m-%d").date()
+                    delta = (today - s_date).days
+                    if delta >= 0:
+                        rem = delta % interval
+                        is_valid_today = (rem == 0)
+                        if not is_valid_today:
+                            next_run_days = interval - rem
+                    else:
+                        is_valid_today = False
+                        next_run_days = abs(delta)
+                except Exception:
+                    is_valid_today = True
+            else:
+                is_valid_today = True
+        elif sched_type == "dates":
+            dates = s.get("dates", [])
+            t_str = today.strftime("%Y-%m-%d")
+            t_mmdd = today.strftime("%m-%d")
+            is_valid_today = (t_str in dates or t_mmdd in dates)
+
+        is_in_window = False
+        is_completed = False
+        try:
+            start_t = datetime.strptime(start_t_str, "%H:%M").time()
+            end_t = datetime.strptime(end_t_str, "%H:%M").time()
+            if start_t <= now_time <= end_t:
+                is_in_window = True
+            elif now_time > end_t:
+                is_completed = True
+        except Exception:
+            pass
+
+        if not is_valid_today:
+            status_text = f"Scheduled in {next_run_days} day(s)" if next_run_days > 0 else "Not scheduled today"
+            badge_class = "badge-future"
+        elif is_in_window:
+            status_text = f"ACTIVE NOW ({start_t_str} - {end_t_str})"
+            badge_class = "badge-active"
+        elif is_completed:
+            status_text = f"Completed today (Window ended at {end_t_str})"
+            badge_class = "badge-completed"
+        else:
+            status_text = f"Scheduled today at {start_t_str}"
+            badge_class = "badge-pending"
+
+        results.append({
+            "index": idx,
+            "contact_name": contact,
+            "type": sched_type,
+            "start_time": start_t_str,
+            "end_time": end_t_str,
+            "interval_days": s.get("interval_days"),
+            "start_date": s.get("start_date"),
+            "jitter_percentage": s.get("jitter_percentage", 15),
+            "is_valid_today": is_valid_today,
+            "is_in_window": is_in_window,
+            "is_completed": is_completed,
+            "status_text": status_text,
+            "badge_class": badge_class
+        })
+        
+    return results
+
 # ----------------- Models -----------------
 
 class SendTextRequest(BaseModel):
@@ -130,6 +245,26 @@ class RequestCodeBody(BaseModel):
     phoneNumber: str = Field(..., description="Phone number with or without country code", example="1234567890")
     countryCode: str = Field("+91", description="Country code", example="+91")
     engine: Optional[str] = Field(None, pattern="^(wap|waha)$", description="Target engine: wap or waha")
+
+class CallExtractionConfig(BaseModel):
+    target_contacts: List[str] = Field(default_factory=list, description="List of target contact names or phone numbers to extract")
+    filter_mode: str = Field("all", pattern="^(all|whitelist)$")
+    mode: Optional[str] = None
+    include_details: bool = True
+    max_calls: int = Field(25, ge=1, le=100)
+
+    def to_dict(self):
+        m = self.mode if (self.mode and self.mode in ("all", "whitelist")) else self.filter_mode
+        return {
+            "target_contacts": self.target_contacts,
+            "filter_mode": m,
+            "mode": m,
+            "include_details": self.include_details,
+            "max_calls": self.max_calls
+        }
+
+class SchedulesPayload(BaseModel):
+    schedules: List[Dict[str, Any]] = Field(..., description="List of schedule items")
 
 # ----------------- UI Dashboard Routes -----------------
 
@@ -208,6 +343,55 @@ async def switch_engine(req: EngineSwitchRequest, request: Request):
         "loginUrl": login_url,
         "message": f"Successfully switched WABot engine to {req.engine.upper()}."
     }
+
+# ----------------- Schedules Management Routes -----------------
+
+@app.get("/api/schedules", summary="Get WABot Message Schedules & Live Status")
+async def get_schedules():
+    schedules = load_wabot_schedules()
+    summary = []
+    for item in schedules:
+        statuses = calculate_schedule_status(item)
+        summary.extend(statuses)
+    return {
+        "schedules": schedules,
+        "summary": summary,
+        "count": len(schedules)
+    }
+
+@app.post("/api/schedules", summary="Save / Update WABot Message Schedules")
+async def update_schedules(payload: SchedulesPayload):
+    if save_wabot_schedules(payload.schedules):
+        return {
+            "success": True,
+            "count": len(payload.schedules),
+            "message": "Schedules saved successfully to gws.json."
+        }
+    raise HTTPException(status_code=500, detail="Failed to write schedules to gws.json.")
+
+@app.get("/api/config/call-extraction", summary="Get Call Extraction Configuration")
+async def get_call_extraction_config():
+    cfg = load_wabot_config()
+    c = cfg.get("call_extraction", {
+        "target_contacts": [],
+        "filter_mode": "all",
+        "mode": "all",
+        "include_details": True,
+        "max_calls": 25
+    })
+    if "mode" not in c:
+        c["mode"] = c.get("filter_mode", "all")
+    if "filter_mode" not in c:
+        c["filter_mode"] = c.get("mode", "all")
+    return c
+
+@app.post("/api/config/call-extraction", summary="Update Call Extraction Configuration")
+async def update_call_extraction_config(req: CallExtractionConfig):
+    cfg = load_wabot_config()
+    cfg["call_extraction"] = req.to_dict()
+    if save_wabot_config(cfg):
+        return {"success": True, "call_extraction": cfg["call_extraction"]}
+    raise HTTPException(status_code=500, detail="Failed to save call extraction configuration.")
 
 # ----------------- Supervisor & WABot Process Management -----------------
 
@@ -480,14 +664,27 @@ async def get_calls(
     limit: int = 20,
     includeDetails: bool = True,
     missedOnly: bool = False,
-    type: Optional[str] = Query(None, pattern="^(audio|video)$")
+    type: Optional[str] = Query(None, pattern="^(audio|video)$"),
+    contact: Optional[str] = None
 ):
     try:
+        cfg = load_wabot_config()
+        call_cfg = cfg.get("call_extraction", {})
+        contacts_filter = []
+        if contact:
+            contacts_filter = [contact]
+        elif call_cfg.get("filter_mode") == "whitelist" and call_cfg.get("target_contacts"):
+            contacts_filter = call_cfg.get("target_contacts", [])
+
+        effective_limit = min(limit, call_cfg.get("max_calls", 25))
+        effective_details = includeDetails if includeDetails is not None else call_cfg.get("include_details", True)
+
         return await browser.get_calls(
-            limit=limit,
-            include_details=includeDetails,
+            limit=effective_limit,
+            include_details=effective_details,
             missed_only=missedOnly,
-            call_type=type
+            call_type=type,
+            contacts_filter=contacts_filter if contacts_filter else None
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

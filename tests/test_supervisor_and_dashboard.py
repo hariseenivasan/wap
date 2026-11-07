@@ -84,3 +84,62 @@ class TestDashboardAndSupervisorApi:
         r3 = requests.get(f"{FILESERVER_URL}/api/status_linknumber")
         assert r3.status_code == 200
         assert r3.json().get("state") == "deprecated"
+
+    def test_schedules_api_and_dashboard_integration(self):
+        """Verify GET /api/schedules and dashboard schedules UI components."""
+        # Check API response
+        r = requests.get(f"{BASE_URL}/api/schedules")
+        assert r.status_code == 200
+        data = r.json()
+        assert "schedules" in data
+        assert isinstance(data["schedules"], list)
+        assert "summary" in data
+
+        # Check Dashboard HTML contains schedules tab and editor
+        dash_res = requests.get(f"{BASE_URL}/dashboard")
+        assert dash_res.status_code == 200
+        html = dash_res.text
+        assert "pane-schedules" in html
+        assert "schedules-json-textarea" in html
+        assert "btn-toggle-schedule-editor" in html
+        assert "stat-schedules-contacts" in html
+
+    def test_call_extraction_config_api(self):
+        """Verify GET /api/config/call-extraction and POST /api/config/call-extraction."""
+        # Read current
+        r1 = requests.get(f"{BASE_URL}/api/config/call-extraction")
+        assert r1.status_code == 200
+        orig_data = r1.json()
+
+        # Update
+        test_payload = {
+            "mode": "whitelist",
+            "target_contacts": ["Test User A", "919999999999"]
+        }
+        r2 = requests.post(f"{BASE_URL}/api/config/call-extraction", json=test_payload)
+        assert r2.status_code == 200
+        assert r2.json().get("success") is True
+
+        # Verify updated
+        r3 = requests.get(f"{BASE_URL}/api/config/call-extraction")
+        assert r3.status_code == 200
+        data3 = r3.json()
+        assert data3["filter_mode"] == "whitelist"
+        assert "Test User A" in data3["target_contacts"]
+
+        # Restore original
+        restore_payload = {
+            "mode": orig_data.get("filter_mode", "all"),
+            "target_contacts": orig_data.get("target_contacts", [])
+        }
+        requests.post(f"{BASE_URL}/api/config/call-extraction", json=restore_payload)
+
+    def test_dashboard_log_filtering_and_notice(self):
+        """Verify log filter buttons and historical stderr disclaimer are present in dashboard HTML."""
+        r = requests.get(f"{BASE_URL}/dashboard")
+        assert r.status_code == 200
+        html = r.text
+        assert "btn-log-combined" in html
+        assert "btn-log-stdout" in html
+        assert "btn-log-stderr" in html
+        assert "stderr-notice" in html

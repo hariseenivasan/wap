@@ -66,6 +66,69 @@
       color: #60a5fa;
       border: 1px solid #3b82f6;
     }
+    .badge-active {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid #10b981;
+    }
+    .badge-pending {
+      background-color: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid #f59e0b;
+    }
+    .badge-completed {
+      background-color: rgba(148, 163, 184, 0.2);
+      color: #94a3b8;
+      border: 1px solid #64748b;
+    }
+    .badge-future {
+      background-color: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      border: 1px solid #3b82f6;
+    }
+    .schedule-card {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .schedule-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .schedule-time-box {
+      background: #090d16;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .log-tab-btn {
+      background: #1e293b;
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 0.2rem 0.65rem;
+      font-size: 0.78rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .log-tab-btn.active {
+      background: #0284c7;
+      color: #fff;
+      border-color: #38bdf8;
+    }
     .pulse-dot {
       width: 8px;
       height: 8px;
@@ -299,6 +362,7 @@
     <nav class="tab-nav">
       <button class="tab-btn active" onclick="switchTab('status')">📊 Live Telemetry</button>
       <button class="tab-btn" onclick="switchTab('wabot')">🤖 WABot Service & Logs</button>
+      <button class="tab-btn" onclick="switchTab('schedules')">📅 Message Schedules</button>
       <button class="tab-btn" onclick="switchTab('config')">⚙️ Engine & Configuration</button>
       <button class="tab-btn" onclick="switchTab('calls')">📞 Call Logs</button>
       <button class="tab-btn" onclick="switchTab('login')">🔑 Session & Relogin</button>
@@ -403,12 +467,75 @@
                 Auto-refresh (3s)
               </label>
             </div>
-            <div style="display:flex; gap:0.5rem;">
-              <button onclick="loadWabotLogs()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🔄 Fetch Latest</button>
-              <button onclick="clearWabotConsole()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🧹 Clear Console</button>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <div style="display:flex; gap:0.25rem;">
+                <button type="button" class="log-tab-btn active" id="btn-log-combined" onclick="setLogView('combined')">Combined</button>
+                <button type="button" class="log-tab-btn" id="btn-log-stdout" onclick="setLogView('stdout')">STDOUT (Live)</button>
+                <button type="button" class="log-tab-btn" id="btn-log-stderr" onclick="setLogView('stderr')">STDERR (Buffer)</button>
+              </div>
+              <button onclick="loadWabotLogs()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🔄 Fetch</button>
+              <button onclick="clearWabotConsole()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🧹 Clear</button>
             </div>
           </div>
+          <div id="stderr-notice" style="display:none; font-size:0.8rem; color:#94a3b8; background:rgba(30,41,59,0.5); padding:0.5rem 0.75rem; border-radius:4px; margin-bottom:0.5rem; border-left:3px solid #f59e0b;">
+            💡 <strong>Historical Stderr Buffer:</strong> Historical messages (such as <em>Connection refused</em> during server restarts/tunnel re-openings) are held in the supervisor buffer. As long as Process State is <strong>RUNNING</strong> and STDOUT shows <strong>WORKING | Authenticated: True</strong>, WABot is actively healthy and connected.
+          </div>
           <pre id="wabot-log-terminal" style="background:#05070d; color:#e2e8f0; font-family:'Courier New', monospace; font-size:0.82rem; padding:1rem; border-radius:6px; max-height:400px; overflow-y:auto; white-space:pre-wrap; word-break:break-all; border:1px solid #1e293b; margin:0;">Connecting to supervisor logs...</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MESSAGE SCHEDULES (config/gws.json) -->
+    <section id="pane-schedules" class="tab-pane">
+      <div class="card-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+          <div>
+            <h3 style="margin:0;">📅 WABot Automated Message Schedules</h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0.3rem 0 0 0;">
+              View active schedules, next delivery windows, and edit <code>config/gws.json</code>.
+            </p>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button onclick="loadSchedules()" class="secondary" style="padding:0.4rem 1rem; font-size:0.85rem;">🔄 Refresh Schedules</button>
+            <button onclick="toggleScheduleEditor()" id="btn-toggle-schedule-editor" style="padding:0.4rem 1rem; font-size:0.85rem;">✏️ Edit Schedule JSON</button>
+          </div>
+        </div>
+
+        <!-- Schedule Metrics Summary -->
+        <div class="stats-grid" style="margin-bottom:1.25rem;">
+          <div class="stat-card">
+            <div class="stat-label">Total Recipients</div>
+            <div class="stat-value" id="stat-schedules-contacts">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Active Today</div>
+            <div class="stat-value" id="stat-schedules-today" style="color:#34d399;">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Currently in Window</div>
+            <div class="stat-value" id="stat-schedules-now" style="color:#38bdf8;">0</div>
+          </div>
+        </div>
+
+        <!-- Schedule Editor (Collapsed by default) -->
+        <div id="schedule-editor-panel" style="display:none; background:#090d16; border:1px solid var(--border-color); border-radius:8px; padding:1.25rem; margin-bottom:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+            <h4 style="margin:0; color:#38bdf8;">✏️ Edit config/gws.json</h4>
+            <div style="display:flex; gap:0.5rem;">
+              <button onclick="formatScheduleJson()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">📐 Format JSON</button>
+              <button onclick="saveSchedulesFromJson()" style="padding:0.25rem 1rem; font-size:0.8rem;">💾 Save Changes</button>
+            </div>
+          </div>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
+            Edit the raw schedule configurations below. Changes are hot-reloaded automatically by WABot on the next loop cycle without requiring a process restart.
+          </p>
+          <textarea id="schedules-json-textarea" style="width:100%; height:320px; background:#05070d; color:#e2e8f0; font-family:'Courier New', monospace; font-size:0.82rem; padding:1rem; border-radius:6px; border:1px solid #1e293b; resize:vertical; box-sizing:border-box;"></textarea>
+          <div id="schedule-save-status" style="margin-top:0.5rem; font-size:0.85rem; font-weight:600;"></div>
+        </div>
+
+        <!-- Live Interactive Schedule Cards Container -->
+        <div id="schedules-list-container">
+          <div style="text-align:center; padding:2rem; color:var(--text-muted);">Loading schedules...</div>
         </div>
       </div>
     </section>
@@ -496,6 +623,31 @@
           <div style="margin-top:0.75rem;">
             <button onclick="switchTab('config')" style="padding:0.35rem 0.9rem; font-size:0.8rem;">Switch to WAP Mode</button>
           </div>
+        </div>
+
+        <!-- Target Contacts Call Extraction Filter Box -->
+        <div style="background:#090d16; border:1px solid var(--border-color); border-radius:8px; padding:1.25rem; margin-bottom:1.5rem;">
+          <h4 style="margin:0 0 0.5rem 0; color:#38bdf8;">🎯 Target Contacts Call Extraction Config</h4>
+          <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 1rem 0;">
+            Specify which contacts or phone numbers should have their call logs extracted in WAP mode. When target contacts are set, extraction focuses specifically on them for faster processing.
+          </p>
+          <div class="grid" style="grid-template-columns: 1fr 2fr 1fr; align-items:end; gap:0.75rem;">
+            <div>
+              <label for="call-filter-mode" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Extraction Mode</label>
+              <select id="call-filter-mode" style="margin:0;">
+                <option value="all">Extract All Calls</option>
+                <option value="whitelist">Whitelist Only</option>
+              </select>
+            </div>
+            <div>
+              <label for="call-target-contacts" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Target Contacts / Numbers (comma-separated)</label>
+              <input type="text" id="call-target-contacts" placeholder="e.g. Boss, Mom, 919876543210" style="margin:0;">
+            </div>
+            <div>
+              <button onclick="saveCallExtractionConfig()" style="width:100%; margin:0; padding:0.6rem 1rem;">💾 Save Targets</button>
+            </div>
+          </div>
+          <div id="call-extract-feedback" style="margin-top:0.5rem; font-size:0.85rem; font-weight:600;"></div>
         </div>
 
         <div style="overflow-x:auto;">
@@ -632,11 +784,17 @@
       const targetPane = document.getElementById('pane-' + tabId);
       if (targetPane) targetPane.classList.add('active');
 
-      if (tabId === 'calls') loadCallLogs();
+      if (tabId === 'calls') {
+        loadCallExtractionConfig();
+        loadCallLogs();
+      }
       if (tabId === 'status') refreshScreenshot();
       if (tabId === 'wabot') {
         loadWabotStatus();
         loadWabotLogs();
+      }
+      if (tabId === 'schedules') {
+        loadSchedules();
       }
     }
 
@@ -762,29 +920,59 @@
       }
     }
 
-    async function loadWabotLogs() {
+    let cachedStdout = '';
+    let cachedStderr = '';
+    let currentLogView = 'combined';
+
+    function setLogView(view) {
+      currentLogView = view;
+      ['combined', 'stdout', 'stderr'].forEach(v => {
+        const btn = document.getElementById(`btn-log-${v}`);
+        if (btn) btn.classList.toggle('active', v === view);
+      });
+      renderLogTerminal();
+    }
+
+    function renderLogTerminal() {
       const term = document.getElementById('wabot-log-terminal');
+      const notice = document.getElementById('stderr-notice');
       if (!term) return;
+
+      if (notice) {
+        notice.style.display = (cachedStderr && cachedStderr.trim().length > 0) ? 'block' : 'none';
+      }
+
+      let content = '';
+      if (currentLogView === 'stdout') {
+        content = cachedStdout.trim() || '[No stdout output recorded yet]';
+      } else if (currentLogView === 'stderr') {
+        content = cachedStderr.trim() || '[No stderr buffer recorded]';
+      } else {
+        if (cachedStdout.trim()) {
+          content += cachedStdout;
+        } else {
+          content += '[No stdout output recorded yet]\n';
+        }
+        if (cachedStderr.trim()) {
+          content += '\n--- [HISTORICAL STDERR BUFFER] ---\n' + cachedStderr;
+        }
+      }
+
+      const isScrolledToBottom = term.scrollHeight - term.clientHeight <= term.scrollTop + 50;
+      term.textContent = content;
+      if (isScrolledToBottom) {
+        term.scrollTop = term.scrollHeight;
+      }
+    }
+
+    async function loadWabotLogs() {
       try {
         const res = await fetch('/api/wabot/logs?bytes_count=8192');
         if (!res.ok) return;
         const data = await res.json();
-        
-        let content = '';
-        if (data.stdout && data.stdout.trim().length > 0) {
-          content += data.stdout;
-        } else {
-          content += '[No stdout output recorded yet]\n';
-        }
-        if (data.stderr && data.stderr.trim().length > 0) {
-          content += '\n--- [STDERR] ---\n' + data.stderr;
-        }
-
-        const isScrolledToBottom = term.scrollHeight - term.clientHeight <= term.scrollTop + 50;
-        term.textContent = content;
-        if (isScrolledToBottom) {
-          term.scrollTop = term.scrollHeight;
-        }
+        cachedStdout = data.stdout || '';
+        cachedStderr = data.stderr || '';
+        renderLogTerminal();
       } catch (err) {
         console.warn("Wabot log tail error:", err);
       }
@@ -1061,6 +1249,217 @@
       });
     }
 
+    // === MESSAGE SCHEDULES (config/gws.json) ===
+    async function loadSchedules() {
+      const container = document.getElementById('schedules-list-container');
+      const textarea = document.getElementById('schedules-json-textarea');
+      try {
+        const res = await fetch('/api/schedules');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const schedules = data.schedules || [];
+
+        if (textarea) {
+          textarea.value = JSON.stringify(schedules, null, 2);
+        }
+
+        document.getElementById('stat-schedules-contacts').textContent = schedules.length;
+
+        let activeNowCount = 0;
+        let todayCount = 0;
+
+        if (schedules.length === 0) {
+          container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">No message schedules configured in config/gws.json.</div>';
+          document.getElementById('stat-schedules-today').textContent = '0';
+          document.getElementById('stat-schedules-now').textContent = '0';
+          return;
+        }
+
+        let html = '';
+        schedules.forEach((entry, idx) => {
+          const contact = entry.contact_name || entry.phone || 'Unnamed Recipient';
+          const msg = entry.message || '(No message defined)';
+          const schedList = entry.schedules || [];
+
+          let cardSchedHtml = '';
+          schedList.forEach((s) => {
+            const ev = s._evaluation || {};
+            const isToday = ev.is_today;
+            const inWindow = ev.in_window;
+            const completed = ev.completed_today;
+
+            if (inWindow) activeNowCount++;
+            if (isToday) todayCount++;
+
+            let badgeClass = 'badge-future';
+            let badgeText = 'FUTURE';
+
+            if (inWindow) {
+              badgeClass = 'badge-active';
+              badgeText = '🟢 ACTIVE NOW';
+            } else if (completed) {
+              badgeClass = 'badge-completed';
+              badgeText = '✅ WINDOW PASSED';
+            } else if (isToday) {
+              badgeClass = 'badge-pending';
+              badgeText = '⏳ TODAY (UPCOMING)';
+            } else if (ev.days_until && ev.days_until > 0) {
+              badgeClass = 'badge-future';
+              badgeText = `IN ${ev.days_until} DAYS`;
+            }
+
+            const recType = s.type || 'interval';
+            let recText = '';
+            if (recType === 'daily') {
+              recText = 'Daily';
+            } else if (recType === 'interval') {
+              recText = `Every ${s.interval_days || 1} day(s) from ${s.start_date || 'start'}`;
+            } else if (recType === 'dates') {
+              recText = `Specific dates: ${(s.dates || []).join(', ')}`;
+            }
+
+            cardSchedHtml += `
+              <div class="schedule-time-box" style="margin-top:0.5rem;">
+                <div>
+                  <span style="font-weight:700; color:#e2e8f0;">⏰ ${escapeHtml(s.start_time || '00:00')} - ${escapeHtml(s.end_time || '23:59')}</span>
+                  <span style="color:var(--text-muted); margin-left:0.5rem; font-size:0.8rem;">(${escapeHtml(recText)})</span>
+                  ${s.jitter_percentage ? `<span style="color:#a855f7; font-size:0.75rem; margin-left:0.5rem;">±${s.jitter_percentage}% jitter</span>` : ''}
+                </div>
+                <div>
+                  <span class="badge ${badgeClass}" style="font-size:0.75rem; padding:0.2rem 0.6rem;">${badgeText}</span>
+                </div>
+              </div>
+            `;
+          });
+
+          html += `
+            <div class="schedule-card">
+              <div class="schedule-header">
+                <div>
+                  <span style="font-size:1.05rem; font-weight:700; color:#38bdf8;">👤 ${escapeHtml(contact)}</span>
+                  <span style="color:var(--text-muted); font-size:0.8rem; margin-left:0.5rem;">(${schedList.length} schedule window${schedList.length === 1 ? '' : 's'})</span>
+                </div>
+              </div>
+              <div style="background:#05070d; border:1px solid #1e293b; border-radius:6px; padding:0.75rem; font-size:0.85rem; color:#cbd5e1; white-space:pre-wrap; word-break:break-word;">
+                <span style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; display:block; margin-bottom:0.25rem;">Message Template:</span>
+                ${escapeHtml(msg)}
+              </div>
+              <div>${cardSchedHtml}</div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+        document.getElementById('stat-schedules-today').textContent = todayCount;
+        document.getElementById('stat-schedules-now').textContent = activeNowCount;
+      } catch (err) {
+        container.innerHTML = `<div style="text-align:center; padding:2rem; color:#ef4444;">Failed to load schedules: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function toggleScheduleEditor() {
+      const panel = document.getElementById('schedule-editor-panel');
+      const btn = document.getElementById('btn-toggle-schedule-editor');
+      if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        btn.textContent = '✖️ Close JSON Editor';
+      } else {
+        panel.style.display = 'none';
+        btn.textContent = '✏️ Edit Schedule JSON';
+      }
+    }
+
+    function formatScheduleJson() {
+      const ta = document.getElementById('schedules-json-textarea');
+      try {
+        const parsed = JSON.parse(ta.value);
+        ta.value = JSON.stringify(parsed, null, 2);
+      } catch (err) {
+        alert("Invalid JSON: " + err.message);
+      }
+    }
+
+    async function saveSchedulesFromJson() {
+      const statusEl = document.getElementById('schedule-save-status');
+      const ta = document.getElementById('schedules-json-textarea');
+      statusEl.style.color = '#38bdf8';
+      statusEl.textContent = 'Saving config/gws.json...';
+
+      try {
+        const parsed = JSON.parse(ta.value);
+        if (!Array.isArray(parsed)) {
+          throw new Error("Schedules root must be a JSON array of recipient objects");
+        }
+
+        const res = await fetch('/api/schedules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ schedules: parsed })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          statusEl.style.color = '#34d399';
+          statusEl.textContent = `✅ Saved successfully (${data.count} schedules)! Hot-reloaded by WABot.`;
+          await loadSchedules();
+          setTimeout(() => { statusEl.textContent = ''; }, 4000);
+        } else {
+          statusEl.style.color = '#ef4444';
+          statusEl.textContent = `❌ Failed to save: ${data.detail || data.error || 'Server error'}`;
+        }
+      } catch (err) {
+        statusEl.style.color = '#ef4444';
+        statusEl.textContent = `❌ JSON Error: ${err.message}`;
+      }
+    }
+
+    // === CALL EXTRACTION CONFIG ===
+    async function loadCallExtractionConfig() {
+      try {
+        const res = await fetch('/api/config/call-extraction');
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById('call-filter-mode').value = data.mode || 'all';
+        document.getElementById('call-target-contacts').value = (data.target_contacts || []).join(', ');
+      } catch (err) {
+        console.warn("Failed to load call extraction config:", err);
+      }
+    }
+
+    async function saveCallExtractionConfig() {
+      const feedback = document.getElementById('call-extract-feedback');
+      feedback.style.color = '#38bdf8';
+      feedback.textContent = 'Saving call extraction config...';
+      try {
+        const mode = document.getElementById('call-filter-mode').value;
+        const rawContacts = document.getElementById('call-target-contacts').value;
+        const targetList = rawContacts.split(',').map(s => s.trim()).filter(Boolean);
+
+        const res = await fetch('/api/config/call-extraction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: mode,
+            target_contacts: targetList
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          feedback.style.color = '#34d399';
+          feedback.textContent = '✅ Call extraction targets saved!';
+          setTimeout(() => { feedback.textContent = ''; }, 3000);
+          loadCallLogs();
+        } else {
+          feedback.style.color = '#ef4444';
+          feedback.textContent = `❌ ${data.detail || data.error || 'Failed to save'}`;
+        }
+      } catch (err) {
+        feedback.style.color = '#ef4444';
+        feedback.textContent = `❌ Error: ${err.message}`;
+      }
+    }
+
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -1071,6 +1470,8 @@
     loadStatus();
     loadWabotStatus();
     loadWabotLogs();
+    loadSchedules();
+    loadCallExtractionConfig();
     setInterval(loadStatus, 5000);
     setInterval(loadWabotStatus, 5000);
     setInterval(() => {

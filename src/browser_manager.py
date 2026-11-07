@@ -517,12 +517,14 @@ class BrowserManager:
         limit: int = 20,
         include_details: bool = True,
         missed_only: bool = False,
-        call_type: Optional[str] = None
+        call_type: Optional[str] = None,
+        contacts_filter: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """
         Extracts call logs from the sidebar Calls tab.
         When include_details=True, clicks each call item to open the Call Info
         drawer on the right to extract duration and the exact dialed phone number.
+        Optional contacts_filter extracts calls specifically for designated contacts/numbers.
         """
         async with self.lock:
             if await self.update_status_check() != "WORKING":
@@ -545,8 +547,12 @@ class BrowserManager:
             call_items = self.page.locator("#pane-side div[role='listitem'], #pane-side div[role='row']")
             count = await call_items.count()
             results = []
+            clean_filters = [cf.strip().lower() for cf in contacts_filter if cf.strip()] if contacts_filter else []
 
-            for i in range(min(count, limit)):
+            for i in range(count):
+                if len(results) >= limit:
+                    break
+
                 item = call_items.nth(i)
                 if not await item.is_visible():
                     continue
@@ -554,6 +560,12 @@ class BrowserManager:
                 item_text = await item.inner_text()
                 lines = [l.strip() for l in item_text.split("\n") if l.strip()]
                 contact = lines[0] if lines else "Unknown"
+
+                # Check pre-filter on contact name if specified
+                if clean_filters:
+                    name_pre_match = any(cf in contact.lower() for cf in clean_filters)
+                    if not name_pre_match and not include_details:
+                        continue
 
                 # Detect Audio vs Video
                 is_video = await item.locator("[data-icon*='video']").count() > 0
@@ -614,6 +626,13 @@ class BrowserManager:
                                 entry["durationSeconds"] = total_s
                     except Exception:
                         pass
+
+                # If contact filter is active, verify post-drawer match
+                if clean_filters:
+                    name_match = any(cf in contact.lower() for cf in clean_filters)
+                    phone_match = any(cf in (entry.get("phoneNumber") or "").lower() for cf in clean_filters)
+                    if not name_match and not phone_match:
+                        continue
 
                 results.append(entry)
 
