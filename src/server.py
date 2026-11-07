@@ -3,6 +3,8 @@ import time
 import json
 import configparser
 import xmlrpc.client
+import requests
+import re
 from contextlib import asynccontextmanager
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Response, Query, Request
@@ -123,6 +125,11 @@ class EngineSwitchRequest(BaseModel):
     period_seconds: Optional[int] = None
     jitter_percentage: Optional[int] = None
     unread_label: Optional[str] = None
+
+class RequestCodeBody(BaseModel):
+    phoneNumber: str = Field(..., description="Phone number with or without country code", example="1234567890")
+    countryCode: str = Field("+91", description="Country code", example="+91")
+    engine: Optional[str] = Field(None, pattern="^(wap|waha)$", description="Target engine: wap or waha")
 
 # ----------------- UI Dashboard Routes -----------------
 
@@ -293,9 +300,46 @@ async def get_wabot_logs(bytes_count: int = 4096):
 # ----------------- WhatsApp Core Routes -----------------
 
 @app.get("/api/status", summary="Session & Engine Health")
-async def get_status():
-    status = await browser.update_status_check()
+async def get_status(engine: Optional[str] = Query(None, pattern="^(wap|waha)$")):
     cfg = load_wabot_config()
+    target_engine = engine or cfg.get("engine", "wap")
+    
+    if target_engine == "waha":
+        try:
+            waha_url = cfg.get("waha_url", "http://127.0.0.1:3000").rstrip("/")
+            r = requests.get(f"{waha_url}/api/sessions/default", timeout=3)
+            if r.status_code == 200:
+                s_data = r.json()
+                s_status = s_data.get("status", "UNKNOWN")
+                return {
+                    "status": s_status,
+                    "engine": "waha",
+                    "activeWabotEngine": cfg.get("engine", "wap"),
+                    "authenticated": (s_status == "WORKING"),
+                    "version": "1.1.0",
+                    "me": s_data.get("me"),
+                    "uptimeSeconds": 0
+                }
+            elif r.status_code == 404:
+                return {
+                    "status": "STOPPED",
+                    "engine": "waha",
+                    "activeWabotEngine": cfg.get("engine", "wap"),
+                    "authenticated": False,
+                    "version": "1.1.0",
+                    "uptimeSeconds": 0
+                }
+        except Exception:
+            return {
+                "status": "UNREACHABLE",
+                "engine": "waha",
+                "activeWabotEngine": cfg.get("engine", "wap"),
+                "authenticated": False,
+                "version": "1.1.0",
+                "uptimeSeconds": 0
+            }
+
+    status = await browser.update_status_check()
     return {
         "status": status,
         "engine": "playwright",
@@ -313,16 +357,87 @@ async def get_screenshot():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/qr", summary="Authentication QR Code")
-async def get_qr(format: str = Query("image", pattern="^(image|json)$")):
+@app.get("/api/qr", summary="Authentication QR Code (WAP & WAHA)")
+async def get_qr(
+    format: str = Query("image", pattern="^(image|json)$"),
+    engine: Optional[str] = Query(None, pattern="^(wap|waha)$")
+):
+    cfg = load_wabot_config()
+    target_engine = engine or cfg.get("engine", "wap")
+    
+    if target_engine == "waha":
+        try:
+            waha_url = cfg.get("waha_url", "http://127.0.0.1:3000").rstrip("/")
+            try:
+                requests.post(f"{waha_url}/api/sessions/start", json={"name": "default"}, timeout=3)
+            except Exception:
+                pass
+            waha_qr_url = f"{waha_url}/api/default/auth/qr?format=image"
+            r = requests.get(waha_qr_url, timeout=5)
+            if r.status_code == 200:
+                if format == "image":
+                    return Response(content=r.content, media_type="image/png")
+                import base64
+                return {"qr": f"data:image/png;base64,{base64.b64encode(r.content).decode('utf-8')}", "engine": "waha"}
+            raise HTTPException(status_code=r.status_code, detail=f"WAHA QR returned {r.status_code}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch WAHA QR: {e}")
+
     try:
         data = await browser.get_qr_screenshot()
         if format == "image":
             return Response(content=data, media_type="image/png")
         import base64
-        return {"qr": f"data:image/png;base64,{base64.b64encode(data).decode('utf-8')}"}
+        return {"qr": f"data:image/png;base64,{base64.b64encode(data).decode('utf-8')}", "engine": "wap"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/auth/request-code", summary="Request Phone Number Pairing Code (WAP & WAHA)")
+async def request_auth_code(req: RequestCodeBody):
+    cfg = load_wabot_config()
+    target_engine = req.engine or cfg.get("engine", "wap")
+    
+    if target_engine == "waha":
+        try:
+            waha_url = cfg.get("waha_url", "http://127.0.0.1:3000").rstrip("/")
+            raw_digits = re.sub(r'\D', '', req.phoneNumber)
+            country_digits = re.sub(r'\D', '', req.countryCode) or "91"
+            full_digits = raw_digits if raw_digits.startswith(country_digits) else f"{country_digits}{raw_digits}"
+            
+            try:
+                requests.post(f"{waha_url}/api/sessions/start", json={"name": "default"}, timeout=3)
+            except Exception:
+                pass
+            
+            resp = requests.post(
+                f"{waha_url}/api/default/auth/request-code",
+                json={"phoneNumber": full_digits},
+                timeout=15
+            )
+            if resp.status_code in [200, 201]:
+                data = resp.json()
+                code = data.get("code") if isinstance(data, dict) else str(data)
+                return {
+                    "success": True,
+                    "code": code,
+                    "engine": "waha",
+                    "phone": f"+{full_digits}"
+                }
+            else:
+                err_text = resp.text
+                try:
+                    err_json = resp.json()
+                    err_text = err_json.get("message") or err_json.get("error") or err_text
+                except Exception:
+                    pass
+                return {"success": False, "error": f"WAHA pairing error ({resp.status_code}): {err_text}", "engine": "waha"}
+        except Exception as e:
+            return {"success": False, "error": f"Could not connect to WAHA: {e}", "engine": "waha"}
+    else:
+        try:
+            return await browser.request_pairing_code(req.phoneNumber, req.countryCode)
+        except Exception as e:
+            return {"success": False, "error": str(e), "engine": "wap"}
 
 @app.post("/api/sendText", status_code=201, summary="Send Text Message")
 async def send_text(req: SendTextRequest):

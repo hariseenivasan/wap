@@ -118,6 +118,172 @@ class BrowserManager:
                 return await canvas.first.screenshot(type="png")
             return await self.page.screenshot(type="png")
 
+    async def _extract_pairing_code_async(self) -> Optional[str]:
+        """Extracts the 8-character pairing code from WhatsApp Web DOM elements."""
+        if not self.page:
+            return None
+        try:
+            code_elements = await self.page.locator("[data-link-code], [data-testid*='code'], [data-testid*='pairing']").all()
+            for el in code_elements:
+                t = (await el.inner_text()).strip().replace(" ", "").replace("\n", "").upper()
+                if re.match(r'^[A-Z0-9]{4}-?[A-Z0-9]{4}$', t):
+                    if "-" not in t and len(t) == 8:
+                        return f"{t[:4]}-{t[4:]}"
+                    return t
+        except Exception:
+            pass
+
+        try:
+            body = await self.page.locator("body").inner_text()
+            lines = [l.strip() for l in body.splitlines() if l.strip()]
+            chars = []
+            capture = False
+            for line in lines:
+                if "Linking WhatsApp account" in line or "Enter code" in line:
+                    capture = True
+                    continue
+                if capture:
+                    if line.startswith("1") or "Open WhatsApp" in line or "Tap" in line:
+                        break
+                    if len(line) == 1 and line in "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+                        chars.append(line)
+                    elif re.match(r'^[A-Z0-9]{4}-[A-Z0-9]{4}$', line):
+                        return line
+            if chars:
+                joined = "".join(chars)
+                if re.match(r'^[A-Z0-9]{8}$', joined):
+                    return f"{joined[:4]}-{joined[4:]}"
+        except Exception:
+            pass
+
+        try:
+            body = await self.page.locator("body").inner_text()
+            m = re.search(r'\b([A-Z0-9]{4}-[A-Z0-9]{4})\b', body)
+            if m:
+                return m.group(1)
+        except Exception:
+            pass
+
+        return None
+
+    async def request_pairing_code(self, phone: str, country_code: str = "+91") -> Dict[str, Any]:
+        """
+        Triggers phone number pairing on WhatsApp Web landing page and returns
+        the generated 8-character pairing code.
+        """
+        async with self.lock:
+            if not self.page or self.page.is_closed():
+                raise RuntimeError("Browser not initialized")
+
+            # Check if already authenticated
+            chat_list = self.page.locator("div#pane-side, [data-testid='chat-list']")
+            if await chat_list.count() > 0 and await chat_list.first.is_visible():
+                return {
+                    "success": True,
+                    "already_logged_in": True,
+                    "message": "Session is already active and authenticated."
+                }
+
+            await self.dismiss_modals()
+
+            # Locate 'Link with phone number' button
+            link_btn = None
+            for sel in [
+                "text='Log in with phone number'",
+                "text='Link with phone number instead'",
+                "text='Link with phone number'",
+                "[role='button']:has-text('phone number')"
+            ]:
+                loc = self.page.locator(sel)
+                if await loc.count() > 0 and await loc.first.is_visible():
+                    link_btn = loc.first
+                    break
+
+            if not link_btn:
+                for text_str in ["Log in with phone number", "Link with phone number instead", "Link with phone number"]:
+                    btn = self.page.get_by_text(text_str)
+                    if await btn.count() > 0 and await btn.first.is_visible():
+                        link_btn = btn.first
+                        break
+
+            if link_btn:
+                await link_btn.click()
+                await asyncio.sleep(1.2)
+
+            phone_input = self.page.locator("input[aria-label*='phone number' i], input[type='text']").first
+            if not await phone_input.is_visible():
+                await self.page.goto("https://web.whatsapp.com/", wait_until="networkidle", timeout=45000)
+                await asyncio.sleep(2)
+                return {
+                    "success": False,
+                    "error": "Could not find phone number input field on WhatsApp Web."
+                }
+
+            digits = re.sub(r'\D', '', phone)
+            country = country_code.strip()
+            current_val = await phone_input.input_value()
+
+            await phone_input.click()
+            await phone_input.press("Control+A")
+            await phone_input.press("Backspace")
+
+            if "+91" in current_val or current_val.strip().startswith("+"):
+                await self.page.keyboard.type(f"{country} {digits}", delay=20)
+            else:
+                await self.page.keyboard.type(digits, delay=20)
+
+            await asyncio.sleep(0.5)
+
+            # Click Next
+            next_btn = self.page.locator("button:has-text('Next'), [role='button']:has-text('Next')").first
+            if await next_btn.is_visible():
+                await next_btn.click()
+            else:
+                await self.page.keyboard.press("Enter")
+
+            # Wait for pairing code or rate limit
+            start_wait = time.time()
+            code = None
+            rate_limited = False
+
+            while time.time() - start_wait < 25:
+                dialog = self.page.locator("[role='dialog']")
+                if await dialog.count() > 0 and await dialog.first.is_visible():
+                    dtext = (await dialog.first.inner_text()).lower()
+                    if "too many" in dtext or "try again later" in dtext:
+                        rate_limited = True
+                        break
+
+                if await self.page.get_by_text("too many attempts", exact=False).count() > 0:
+                    if await self.page.get_by_text("too many attempts", exact=False).first.is_visible():
+                        rate_limited = True
+                        break
+
+                code = await self._extract_pairing_code_async()
+                if code:
+                    break
+                await asyncio.sleep(1.0)
+
+            if rate_limited:
+                return {
+                    "success": False,
+                    "rate_limited": True,
+                    "error": "WhatsApp Rate Limit: Too many attempts were made. Please wait 15-30 minutes, or link via QR code instead."
+                }
+
+            if not code:
+                return {
+                    "success": False,
+                    "error": "Timed out waiting for pairing code from WhatsApp servers."
+                }
+
+            return {
+                "success": True,
+                "code": code,
+                "engine": "wap",
+                "phone": f"{country} {digits}"
+            }
+
     async def navigate_to_chat(self, target: str) -> bool:
         """
         Locates and opens a chat in-place via the search box or New Chat panel

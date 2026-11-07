@@ -524,16 +524,25 @@
     <!-- TAB 5: SESSION & RELOGIN -->
     <section id="pane-login" class="tab-pane">
       <div class="card-box">
-        <h3 style="margin-top:0;">WhatsApp Authentication & Session Linking</h3>
-        <p style="color:var(--text-muted); font-size:0.9rem;">
-          Link your WhatsApp account to the active engine (<span id="login-engine-name">WAP</span>).
-        </p>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+          <div>
+            <h3 style="margin:0;">WhatsApp Authentication & Session Linking</h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0.3rem 0 0 0;">
+              Link your WhatsApp account to active engine (<span id="login-engine-name" style="color:#38bdf8; font-weight:700;">WAP</span>).
+            </p>
+          </div>
+          <div>
+            <a href="/login" target="_blank" role="button" class="secondary" style="padding:0.4rem 1rem; font-size:0.85rem;">
+              ↗️ Open Dedicated Login Hub
+            </a>
+          </div>
+        </div>
 
         <div class="grid">
           <!-- QR Code Option -->
           <div style="text-align:center; background:#0f172a; padding:1.5rem; border-radius:8px; border:1px solid var(--border-color);">
-            <h4 style="margin-top:0;">QR Code Pairing</h4>
-            <p style="color:var(--text-muted); font-size:0.85rem;">Scan this QR code with WhatsApp (Linked Devices > Link a device):</p>
+            <h4 style="margin-top:0;">Option 1: QR Code Pairing</h4>
+            <p style="color:var(--text-muted); font-size:0.85rem;">Scan this QR code with WhatsApp (Linked Devices &gt; Link a device):</p>
             <div style="margin:1rem auto; width:220px; height:220px; background:#fff; padding:10px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
               <img id="qr-code-img" src="/api/qr?format=image" alt="QR Code" style="max-width:100%; max-height:100%;">
             </div>
@@ -542,20 +551,34 @@
 
           <!-- Phone Number Pairing Option -->
           <div style="background:#0f172a; padding:1.5rem; border-radius:8px; border:1px solid var(--border-color);">
-            <h4 style="margin-top:0;">Alternative: Phone Number Pairing</h4>
+            <h4 style="margin-top:0;">Option 2: Phone Number Pairing</h4>
             <p style="color:var(--text-muted); font-size:0.85rem;">
-              Link using an 8-character pairing code sent to your primary WhatsApp phone without scanning:
+              Link using an 8-character code sent to your primary WhatsApp phone without scanning:
             </p>
-            <div style="margin-top:1.5rem;">
-              <a id="linknumber-link" href="#" target="_blank" role="button" style="width:100%; text-align:center; font-weight:700;">
-                🔗 Open One-Click Phone Pairing Dashboard
-              </a>
+
+            <form id="dash-phone-pair-form" onsubmit="event.preventDefault(); requestDashCode();" style="margin-top:1rem;">
+              <div class="grid" style="grid-template-columns: 80px 1fr; gap:0.5rem; margin-bottom:0.75rem;">
+                <div>
+                  <label for="dash-country-code" style="font-size:0.75rem; color:var(--text-muted);">Country</label>
+                  <input type="text" id="dash-country-code" value="+91" style="text-align:center; font-weight:700;">
+                </div>
+                <div>
+                  <label for="dash-phone-number" style="font-size:0.75rem; color:var(--text-muted);">Mobile Number</label>
+                  <input type="text" id="dash-phone-number" placeholder="Enter mobile number" required>
+                </div>
+              </div>
+
+              <button type="submit" id="btn-dash-request-code" style="width:100%; font-weight:700; padding:0.5rem 1rem;">
+                🔗 Request 8-Character Pairing Code
+              </button>
+            </form>
+
+            <div id="dash-code-box" style="display:none; margin-top:1rem; background:#090d16; border:1px dashed #38bdf8; border-radius:8px; padding:1rem; text-align:center;">
+              <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Pairing Code (<span id="dash-timer">180s</span>)</div>
+              <div id="dash-code-val" style="font-family:'Courier New', monospace; font-size:2rem; font-weight:800; color:#38bdf8; letter-spacing:0.15em; margin:0.3rem 0;">---- ----</div>
+              <button onclick="copyDashCode()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">📋 Copy Code</button>
             </div>
-            <div style="margin-top:1.5rem;">
-              <a id="waha-dashboard-link" href="#" target="_blank" role="button" class="secondary" style="width:100%; text-align:center; font-weight:700; display:none;">
-                🌐 Open WAHA Web Dashboard
-              </a>
-            </div>
+            <div id="dash-code-feedback" style="font-size:0.85rem; margin-top:0.5rem; text-align:center;"></div>
           </div>
         </div>
       </div>
@@ -646,12 +669,8 @@
         document.getElementById('stat-auth-status').textContent = data.authenticated ? "Authenticated (WORKING)" : data.status;
         const portNum = (activeEngine === 'wap') ? '3001' : '3000';
         document.getElementById('stat-engine-port').textContent = `${portNum} (${data.uptimeSeconds || 0}s)`;
-
-        // Update links
-        const host = window.location.hostname;
-        document.getElementById('linknumber-link').href = `http://${host}:9002/linknumber/`;
-        document.getElementById('waha-dashboard-link').href = `http://${host}:3000/dashboard/`;
-        document.getElementById('waha-dashboard-link').style.display = (activeEngine === 'waha') ? 'block' : 'none';
+        const loginEngineEl = document.getElementById('login-engine-name');
+        if (loginEngineEl) loginEngineEl.textContent = activeEngine.toUpperCase();
 
         // Select active engine in config tab if not dirty
         if (!document.getElementById('confirm-modal').style.display || document.getElementById('confirm-modal').style.display === 'none') {
@@ -959,6 +978,87 @@
     function refreshQr() {
       const img = document.getElementById('qr-code-img');
       if (img) img.src = '/api/qr?format=image&t=' + Date.now();
+    }
+
+    let dashCountdownTimer = null;
+
+    async function requestDashCode() {
+      const btn = document.getElementById('btn-dash-request-code');
+      const phone = document.getElementById('dash-phone-number').value.trim();
+      const country = document.getElementById('dash-country-code').value.trim();
+      const codeBox = document.getElementById('dash-code-box');
+      const codeVal = document.getElementById('dash-code-val');
+      const feedback = document.getElementById('dash-code-feedback');
+
+      if (!phone) {
+        alert("Please enter a mobile phone number.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = `⏳ Requesting code from ${activeEngine.toUpperCase()}...`;
+      feedback.style.color = '#38bdf8';
+      feedback.textContent = 'Generating pairing code from WhatsApp...';
+
+      try {
+        const res = await fetch('/api/auth/request-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phoneNumber: phone,
+            countryCode: country,
+            engine: activeEngine
+          })
+        });
+
+        const data = await res.json();
+        btn.disabled = false;
+        btn.textContent = '🔗 Request 8-Character Pairing Code';
+
+        if (data.success && data.code) {
+          codeVal.textContent = data.code;
+          codeBox.style.display = 'block';
+          feedback.style.color = '#34d399';
+          feedback.textContent = `Code generated! Open WhatsApp on phone > Linked Devices > Link with phone number > Enter ${data.code}`;
+          startDashCountdown(180);
+        } else if (data.already_logged_in) {
+          feedback.style.color = '#34d399';
+          feedback.textContent = '✅ Already logged in and active!';
+        } else {
+          feedback.style.color = '#ef4444';
+          feedback.textContent = `❌ ${data.error || 'Failed to generate code'}`;
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '🔗 Request 8-Character Pairing Code';
+        feedback.style.color = '#ef4444';
+        feedback.textContent = `❌ Error: ${err.message}`;
+      }
+    }
+
+    function startDashCountdown(secs) {
+      if (dashCountdownTimer) clearInterval(dashCountdownTimer);
+      let s = secs;
+      const el = document.getElementById('dash-timer');
+      el.textContent = `${s}s`;
+      dashCountdownTimer = setInterval(() => {
+        s--;
+        if (s <= 0) {
+          clearInterval(dashCountdownTimer);
+          el.textContent = 'EXPIRED';
+        } else {
+          el.textContent = `${s}s`;
+        }
+      }, 1000);
+    }
+
+    function copyDashCode() {
+      const codeText = document.getElementById('dash-code-val').textContent.replace(/\s+/g, '');
+      navigator.clipboard.writeText(codeText).then(() => {
+        const btn = document.querySelector('#dash-code-box button');
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => { btn.textContent = '📋 Copy Code'; }, 2000);
+      });
     }
 
     function escapeHtml(str) {
