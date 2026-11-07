@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  wap:
+    build: .
+    container_name: wap
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./session:/app/userdata
+    environment:
+      - PORT=3001
+      - USER_DATA_DIR=/app/userdata
