@@ -216,6 +216,25 @@ Scans a group chat, locates image and video messages older than a threshold, and
 
 ---
 
+## 🖥️ Unified Web Control Center & Dashboard (Port 3001)
+
+WAP features a built-in single-page administration control center accessible directly at `http://localhost:3001/` or `http://localhost:3001/dashboard`.
+
+### Capabilities:
+* **Live Telemetry & Viewport Proofing**: Real-time inspection of WhatsApp Web DOM state and headless browser viewport captures (`GET /api/screenshot`).
+* **Dual Engine Management (WAP $\leftrightarrow$ WAHA)**:
+  * View active engine mode (`MODE: WAP (WYSIWYT)` vs `MODE: WAHA (HTTP API)`).
+  * Double-Confirmation Modal safeguards: Prompts the user before changing engines that the companion session will decouple and requires relinking, then automatically launches the appropriate login page in a new browser tab.
+* **Supervisor Process Integration**:
+  * Real-time monitoring of the `wabot` daemon process state (`RUNNING`, `STOPPED`, `STARTING`), PID, and uptime.
+  * Direct process controls (`/api/wabot/restart`, `/api/wabot/start`, `/api/wabot/stop`).
+  * Live log terminal console streaming stdout/stderr with auto-refresh.
+  * Direct shortcut to raw Supervisor console on port 9001.
+* **Historical Call Log Explorer**: Interactive table displaying caller, dialed number, audio/video type, duration, and timestamps.
+* **Session & Relogin Drawer**: QR code display and one-click phone pairing link.
+
+---
+
 ## 🛠️ Ready-to-Use Admin Scripts
 
 Three standalone admin tools are provided in `examples/`:

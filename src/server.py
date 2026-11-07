@@ -1,8 +1,12 @@
 import os
 import time
+import json
+import configparser
+import xmlrpc.client
 from contextlib import asynccontextmanager
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Response, Query
+from fastapi import FastAPI, HTTPException, Response, Query, Request
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -12,6 +16,9 @@ except (ImportError, ModuleNotFoundError):
     from .browser_manager import BrowserManager
 
 USER_DATA_DIR = os.getenv("USER_DATA_DIR", "./userdata")
+WABOT_CONFIG_PATH = os.getenv("WABOT_CONFIG_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config/config.json")))
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 browser = BrowserManager(user_data_dir=USER_DATA_DIR)
 
 @asynccontextmanager
@@ -26,9 +33,9 @@ async def lifespan(app: FastAPI):
     await browser.shutdown()
 
 app = FastAPI(
-    title="WAP - WhatsApp Playwright API",
-    description="A visual, browser-backed admin REST API for WhatsApp Web automation (WYSIWYT implementation of WAHA).",
-    version="1.0.0",
+    title="WAP - WhatsApp Playwright API & Control Center",
+    description="A visual, browser-backed admin REST API & Dashboard for WhatsApp Web automation (WYSIWYT implementation of WAHA).",
+    version="1.1.0",
     lifespan=lifespan
 )
 
@@ -39,6 +46,56 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ----------------- Helper Functions -----------------
+
+def get_supervisor_client():
+    url = os.getenv("SUPERVISOR_URL")
+    if not url:
+        inet_conf = "/etc/supervisor/conf.d/inet.conf"
+        if os.path.exists(inet_conf):
+            try:
+                conf = configparser.ConfigParser()
+                conf.read(inet_conf)
+                user = conf.get("inet_http_server", "username", fallback="")
+                pwd = conf.get("inet_http_server", "password", fallback="")
+                port = conf.get("inet_http_server", "port", fallback="9001").split(":")[-1]
+                auth = f"{user}:{pwd}@" if user and pwd else ""
+                url = f"http://{auth}127.0.0.1:{port}/RPC2"
+            except Exception:
+                url = "http://127.0.0.1:9001/RPC2"
+        else:
+            url = "http://127.0.0.1:9001/RPC2"
+    return xmlrpc.client.ServerProxy(url)
+
+def load_wabot_config() -> dict:
+    if os.path.exists(WABOT_CONFIG_PATH):
+        try:
+            with open(WABOT_CONFIG_PATH, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[WAP Error]: Could not load config from {WABOT_CONFIG_PATH}: {e}")
+    return {
+        "engine": "wap",
+        "waha_url": "http://127.0.0.1:3000",
+        "wap_url": "http://127.0.0.1:3001",
+        "defaults": {
+            "period_seconds": 600,
+            "jitter_percentage": 15,
+            "unread_label": "unread message"
+        }
+    }
+
+def save_wabot_config(data: dict) -> bool:
+    if os.path.exists(os.path.dirname(WABOT_CONFIG_PATH)):
+        try:
+            with open(WABOT_CONFIG_PATH, "w") as f:
+                json.dump(data, f, indent=4)
+            return True
+        except Exception as e:
+            print(f"[WAP Error]: Could not save config to {WABOT_CONFIG_PATH}: {e}")
+            return False
+    return False
 
 # ----------------- Models -----------------
 
@@ -56,16 +113,195 @@ class CleanMediaRequest(BaseModel):
     olderThanHours: int = Field(48, description="Purge media older than this threshold", example=48)
     deleteForEveryone: bool = Field(False, description="Attempt 'Delete for everyone' if admin")
 
-# ----------------- Routes -----------------
+class ConfigUpdateRequest(BaseModel):
+    period_seconds: Optional[int] = Field(None, ge=60, le=86400)
+    jitter_percentage: Optional[int] = Field(None, ge=0, le=50)
+    unread_label: Optional[str] = None
+
+class EngineSwitchRequest(BaseModel):
+    engine: str = Field(..., pattern="^(wap|waha)$")
+    period_seconds: Optional[int] = None
+    jitter_percentage: Optional[int] = None
+    unread_label: Optional[str] = None
+
+# ----------------- UI Dashboard Routes -----------------
+
+@app.get("/", response_class=HTMLResponse, summary="Admin Dashboard UI")
+@app.get("/dashboard", response_class=HTMLResponse, summary="Admin Dashboard UI")
+async def get_dashboard():
+    dashboard_file = os.path.join(CURRENT_DIR, "dashboard.html")
+    if os.path.exists(dashboard_file):
+        with open(dashboard_file, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse("<h3>Dashboard file not found</h3>")
+
+@app.get("/login", response_class=HTMLResponse, summary="Authentication & Login View")
+async def get_login_page():
+    login_file = os.path.join(CURRENT_DIR, "login.html")
+    if os.path.exists(login_file):
+        with open(login_file, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse("<h3>Login page not found</h3>")
+
+# ----------------- Configuration & Engine Routes -----------------
+
+@app.get("/api/config", summary="Get WABot Configuration")
+async def get_config():
+    cfg = load_wabot_config()
+    sanitized = cfg.copy()
+    if "auth" in sanitized:
+        sanitized["auth"] = {"configured": bool(sanitized["auth"].get("phone_number"))}
+    if "phone_number" in sanitized:
+        sanitized["phone_number"] = "***masked***"
+    return sanitized
+
+@app.post("/api/config", summary="Update WABot Configuration")
+async def update_config(req: ConfigUpdateRequest):
+    cfg = load_wabot_config()
+    if "defaults" not in cfg:
+        cfg["defaults"] = {}
+    if req.period_seconds is not None:
+        cfg["defaults"]["period_seconds"] = req.period_seconds
+    if req.jitter_percentage is not None:
+        cfg["defaults"]["jitter_percentage"] = req.jitter_percentage
+    if req.unread_label is not None:
+        cfg["defaults"]["unread_label"] = req.unread_label
+
+    if save_wabot_config(cfg):
+        return {"success": True, "config": cfg}
+    raise HTTPException(status_code=500, detail="Failed to write configuration file.")
+
+@app.post("/api/engine/switch", summary="Double-Confirmed Engine Switch")
+async def switch_engine(req: EngineSwitchRequest, request: Request):
+    cfg = load_wabot_config()
+    cfg["engine"] = req.engine
+    
+    if "defaults" not in cfg:
+        cfg["defaults"] = {}
+    if req.period_seconds is not None:
+        cfg["defaults"]["period_seconds"] = req.period_seconds
+    if req.jitter_percentage is not None:
+        cfg["defaults"]["jitter_percentage"] = req.jitter_percentage
+    if req.unread_label is not None:
+        cfg["defaults"]["unread_label"] = req.unread_label
+
+    if not save_wabot_config(cfg):
+        raise HTTPException(status_code=500, detail="Failed to save engine switch in configuration.")
+
+    host = request.headers.get("host", "localhost:3001").split(":")[0]
+    
+    if req.engine == "waha":
+        login_url = f"http://{host}:3000/dashboard"
+    else:
+        login_url = f"http://{host}:3001/login?engine=wap"
+
+    return {
+        "success": True,
+        "engine": req.engine,
+        "loginUrl": login_url,
+        "message": f"Successfully switched WABot engine to {req.engine.upper()}."
+    }
+
+# ----------------- Supervisor & WABot Process Management -----------------
+
+@app.get("/api/wabot/status", summary="Get WABot Process Status from Supervisor")
+async def get_wabot_status():
+    cfg = load_wabot_config()
+    active_engine = cfg.get("engine", "wap")
+    try:
+        client = get_supervisor_client()
+        info = client.supervisor.getProcessInfo("wabot")
+        uptime = max(0, info["now"] - info["start"]) if info["statename"] == "RUNNING" else 0
+        return {
+            "name": info["name"],
+            "statename": info["statename"],
+            "pid": info["pid"],
+            "description": info["description"],
+            "uptimeSeconds": uptime,
+            "engine": active_engine,
+            "supervisorAvailable": True
+        }
+    except Exception as e:
+        return {
+            "name": "wabot",
+            "statename": "UNKNOWN",
+            "pid": 0,
+            "description": str(e),
+            "uptimeSeconds": 0,
+            "engine": active_engine,
+            "supervisorAvailable": False
+        }
+
+@app.post("/api/wabot/restart", summary="Restart WABot Service under Supervisor")
+async def restart_wabot():
+    try:
+        client = get_supervisor_client()
+        try:
+            client.supervisor.stopProcess("wabot")
+        except Exception:
+            pass
+        # Clear stale locks
+        lock = os.path.join(CURRENT_DIR, "../../whatsapp_userdata/SingletonLock")
+        if os.path.exists(lock):
+            try:
+                os.remove(lock)
+            except Exception:
+                pass
+        time.sleep(0.5)
+        client.supervisor.startProcess("wabot")
+        info = client.supervisor.getProcessInfo("wabot")
+        return {"success": True, "statename": info["statename"], "pid": info["pid"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to restart wabot: {e}")
+
+@app.post("/api/wabot/start", summary="Start WABot Service under Supervisor")
+async def start_wabot():
+    try:
+        client = get_supervisor_client()
+        client.supervisor.startProcess("wabot")
+        info = client.supervisor.getProcessInfo("wabot")
+        return {"success": True, "statename": info["statename"], "pid": info["pid"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start wabot: {e}")
+
+@app.post("/api/wabot/stop", summary="Stop WABot Service under Supervisor")
+async def stop_wabot():
+    try:
+        client = get_supervisor_client()
+        client.supervisor.stopProcess("wabot")
+        info = client.supervisor.getProcessInfo("wabot")
+        return {"success": True, "statename": info["statename"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stop wabot: {e}")
+
+@app.get("/api/wabot/logs", summary="Get Latest WABot Logs from Supervisor")
+async def get_wabot_logs(bytes_count: int = 4096):
+    try:
+        client = get_supervisor_client()
+        stdout_log, _, _ = client.supervisor.tailProcessStdoutLog("wabot", 0, bytes_count)
+        stderr_log, _, _ = client.supervisor.tailProcessStderrLog("wabot", 0, bytes_count)
+        return {
+            "stdout": stdout_log,
+            "stderr": stderr_log
+        }
+    except Exception as e:
+        return {
+            "stdout": f"[Log Error]: Could not read logs from supervisor: {e}",
+            "stderr": ""
+        }
+
+# ----------------- WhatsApp Core Routes -----------------
 
 @app.get("/api/status", summary="Session & Engine Health")
 async def get_status():
     status = await browser.update_status_check()
+    cfg = load_wabot_config()
     return {
         "status": status,
         "engine": "playwright",
+        "activeWabotEngine": cfg.get("engine", "wap"),
         "authenticated": (status == "WORKING"),
-        "version": "1.0.0",
+        "version": "1.1.0",
         "uptimeSeconds": int(time.time() - browser.start_time)
     }
 

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Authentication - WABot Control Center</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    :root {
+      --primary: #10b981;
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+    }
+    body {
+      background: var(--bg-dark);
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .auth-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      max-width: 540px;
+      width: 100%;
+      padding: 2rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+    .qr-container {
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 12px;
+      width: 250px;
+      height: 250px;
+      margin: 1.5rem auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .badge-engine {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .badge-wap { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+    .badge-waha { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
+    .status-text {
+      font-size: 0.95rem;
+      color: #94a3b8;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-card">
+    <span id="engine-badge" class="badge-engine badge-wap">ENGINE: WAP</span>
+    <h2 style="margin-top:0;">Link WhatsApp Account</h2>
+    <p style="color:#94a3b8; font-size:0.9rem;" id="login-desc">
+      Scan this QR code with WhatsApp on your phone (<strong>Linked Devices &gt; Link a device</strong>).
+    </p>
+
+    <!-- WAP View -->
+    <div id="view-wap">
+      <div class="qr-container">
+        <img id="wap-qr-img" src="/api/qr?format=image" alt="WhatsApp QR Code" style="max-width:100%; max-height:100%;">
+      </div>
+      <div style="margin-top:1rem;">
+        <button onclick="refreshWapQr()" class="secondary" style="padding:0.4rem 1rem; font-size:0.85rem;">🔄 Refresh QR Code</button>
+      </div>
+
+      <div style="margin-top:1.5rem; padding-top:1.2rem; border-top:1px solid var(--border-color);">
+        <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:0.8rem;">Prefer phone number pairing instead of QR scan?</p>
+        <a id="phone-pair-link" href="#" target="_blank" role="button" style="width:100%; font-weight:700;">
+          📲 Link with Phone Number Instead
+        </a>
+      </div>
+    </div>
+
+    <!-- WAHA View -->
+    <div id="view-waha" style="display:none;">
+      <div style="background:#0f172a; border-radius:10px; padding:1.5rem; margin:1.5rem 0; border:1px solid var(--border-color);">
+        <p style="font-size:0.95rem; line-height:1.5;">
+          WAHA operates its dedicated session manager and visual dashboard. Click below to open the WAHA Dashboard and initialize/link your companion session:
+        </p>
+        <a id="waha-dash-btn" href="#" target="_blank" role="button" style="width:100%; font-weight:700; background:#3b82f6; border-color:#3b82f6;">
+          🚀 Open WAHA Web Dashboard
+        </a>
+      </div>
+    </div>
+
+    <div class="status-text" id="status-indicator">
+      Checking authentication status...
+    </div>
+
+    <div style="margin-top:1.5rem;">
+      <a href="/" style="font-size:0.85rem; color:#94a3b8; text-decoration:none;">← Return to Main Dashboard</a>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    let targetEngine = urlParams.get('engine') || 'wap';
+    const host = window.location.hostname;
+
+    document.getElementById('phone-pair-link').href = `http://${host}:9002/linknumber/`;
+    document.getElementById('waha-dash-btn').href = `http://${host}:3000/dashboard/`;
+
+    function setEngineView(engine) {
+      targetEngine = engine;
+      const badge = document.getElementById('engine-badge');
+      if (engine === 'waha') {
+        badge.className = 'badge-engine badge-waha';
+        badge.textContent = 'ENGINE: WAHA';
+        document.getElementById('view-wap').style.display = 'none';
+        document.getElementById('view-waha').style.display = 'block';
+        document.getElementById('login-desc').textContent = 'Connect via WAHA companion WebSocket dashboard.';
+      } else {
+        badge.className = 'badge-engine badge-wap';
+        badge.textContent = 'ENGINE: WAP (WYSIWYT)';
+        document.getElementById('view-wap').style.display = 'block';
+        document.getElementById('view-waha').style.display = 'none';
+        document.getElementById('login-desc').innerHTML = 'Scan this QR code with WhatsApp on your phone (<strong>Linked Devices &gt; Link a device</strong>).';
+      }
+    }
+
+    setEngineView(targetEngine);
+
+    function refreshWapQr() {
+      const img = document.getElementById('wap-qr-img');
+      if (img) img.src = '/api/qr?format=image&t=' + Date.now();
+    }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+          const indicator = document.getElementById('status-indicator');
+          if (data.authenticated) {
+            indicator.style.color = '#34d399';
+            indicator.textContent = '🎉 Logged in successfully! Returning to dashboard in 3 seconds...';
+            setTimeout(() => { window.location.href = '/'; }, 3000);
+          } else {
+            indicator.textContent = `Status: ${data.status} (Awaiting scan or phone link...)`;
+          }
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+
+    setInterval(checkAuth, 4000);
+    checkAuth();
+  </script>
+</body>
+</html>

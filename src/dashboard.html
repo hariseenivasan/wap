@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WABot & WAP Unified Control Center</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --waha-color: #3b82f6;
+      --wap-color: #10b981;
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+    }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .header-bar {
+      background-color: #1e293b;
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .brand-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .brand-title svg {
+      color: var(--primary);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      user-select: none;
+    }
+    .badge-wap {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid #10b981;
+    }
+    .badge-waha {
+      background-color: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      border: 1px solid #3b82f6;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+      box-shadow: 0 0 8px currentColor;
+    }
+    .main-container {
+      max-width: 1200px;
+      margin: 1.5rem auto;
+      padding: 0 1rem;
+    }
+    .tab-nav {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 2px solid var(--border-color);
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.75rem 1.25rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: none;
+    }
+    .tab-pane {
+      display: none;
+    }
+    .tab-pane.active {
+      display: block;
+    }
+    .card-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+    }
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+    .stat-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
+    .engine-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .engine-card {
+      background: #0f172a;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .engine-card:hover {
+      border-color: #64748b;
+    }
+    .engine-card.selected {
+      border-color: var(--primary);
+      background: rgba(16, 185, 129, 0.05);
+    }
+    .engine-card.selected.waha-mode {
+      border-color: var(--waha-color);
+      background: rgba(59, 130, 246, 0.05);
+    }
+    .engine-card input[type="radio"] {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+    }
+    .engine-header {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .engine-features {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .engine-features li {
+      margin-bottom: 0.3rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+    th {
+      background: #0f172a;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .badge-tag {
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .tag-audio { background: #3b82f6; color: #fff; }
+    .tag-video { background: #8b5cf6; color: #fff; }
+    .tag-missed { background: #ef4444; color: #fff; }
+    .tag-answered { background: #10b981; color: #fff; }
+    
+    /* Confirmation Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      padding: 1rem;
+    }
+    .modal-box {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      max-width: 520px;
+      width: 100%;
+      padding: 1.75rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #f59e0b;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .modal-warning {
+      background: rgba(239, 68, 68, 0.15);
+      border-left: 4px solid #ef4444;
+      padding: 0.85rem 1rem;
+      border-radius: 4px;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: #fca5a5;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+    .img-preview {
+      max-width: 100%;
+      max-height: 380px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Bar -->
+  <header class="header-bar">
+    <div class="brand-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span>WABot & WAP Control Center</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
+      <!-- Active Mode Badge -->
+      <span id="active-mode-badge" class="badge badge-wap" title="Active WABot Backend Engine">
+        <span class="pulse-dot"></span>
+        <span id="active-mode-text">MODE: WAP (WYSIWYT)</span>
+      </span>
+      <!-- WABot Daemon Badge (Clickable to jump to WABot tab) -->
+      <span id="wabot-daemon-badge" class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; cursor: pointer;" onclick="switchTab('wabot')" title="Click to view WABot service & logs">
+        <span class="pulse-dot" id="wabot-pulse-dot"></span>
+        <span id="wabot-daemon-text">WABOT: RUNNING</span>
+      </span>
+      <!-- Engine Status Badge -->
+      <span id="engine-status-badge" class="badge badge-wap" style="background:#334155; color:#f8fafc; border:none;" title="Session Auth Health">
+        <span id="engine-status-text">HEALTH: CHECKING...</span>
+      </span>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- Navigation Tabs -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('status')">📊 Live Telemetry</button>
+      <button class="tab-btn" onclick="switchTab('wabot')">🤖 WABot Service & Logs</button>
+      <button class="tab-btn" onclick="switchTab('config')">⚙️ Engine & Configuration</button>
+      <button class="tab-btn" onclick="switchTab('calls')">📞 Call Logs</button>
+      <button class="tab-btn" onclick="switchTab('login')">🔑 Session & Relogin</button>
+    </nav>
+
+    <!-- TAB 1: STATUS & TELEMETRY -->
+    <section id="pane-status" class="tab-pane active">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Active Engine</div>
+          <div class="stat-value" id="stat-active-engine">WAP</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="switchTab('wabot')" title="Click to manage process">
+          <div class="stat-label">WABot Service</div>
+          <div class="stat-value" id="stat-wabot-service" style="color:#34d399;">RUNNING</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">WhatsApp Session</div>
+          <div class="stat-value" id="stat-auth-status">Checking...</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Engine Port & Uptime</div>
+          <div class="stat-value" id="stat-engine-port">3001 (0s)</div>
+        </div>
+      </div>
+
+      <div class="card-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+          <div>
+            <h3 style="margin:0;">Live Viewport Inspection</h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0.2rem 0 0 0;">
+              Real-time capture from WAP's internal headless Playwright Chromium viewport.
+            </p>
+          </div>
+          <div>
+            <button onclick="refreshScreenshot()" class="secondary" style="padding:0.4rem 1rem; font-size:0.85rem;">🔄 Refresh Viewport</button>
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <img id="viewport-stream" class="img-preview" src="/api/screenshot" alt="Internal Browser Viewport">
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: WABOT SERVICE & LOGS (SUPERVISOR INTEGRATION) -->
+    <section id="pane-wabot" class="tab-pane">
+      <div class="card-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+          <div>
+            <h3 style="margin:0;">Supervisor Process Management: <code>wabot</code></h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0.3rem 0 0 0;">
+              Manage the background WABot daemon orchestrated by system Supervisor (Port 9001).
+            </p>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <a id="supervisor-raw-link" href="#" target="_blank" role="button" class="secondary" style="padding:0.4rem 0.9rem; font-size:0.85rem;">
+              ⚙️ Open Raw Supervisor UI (9001)
+            </a>
+          </div>
+        </div>
+
+        <div class="stats-grid" style="margin-bottom:1.25rem;">
+          <div class="stat-card">
+            <div class="stat-label">Process State</div>
+            <div class="stat-value" id="wabot-stat-state" style="color:#34d399;">RUNNING</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Process PID</div>
+            <div class="stat-value" id="wabot-stat-pid">10912</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Process Uptime</div>
+            <div class="stat-value" id="wabot-stat-uptime">0s</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Supervisor Connection</div>
+            <div class="stat-value" id="wabot-stat-supervisor" style="font-size:1.1rem; color:#34d399;">CONNECTED (RPC2)</div>
+          </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.5rem; align-items:center;">
+          <button id="btn-restart-wabot" onclick="controlWabot('restart')" style="background:#f59e0b; border-color:#f59e0b; padding:0.5rem 1.25rem; font-weight:700;">
+            🔄 Restart WABot
+          </button>
+          <button id="btn-start-wabot" onclick="controlWabot('start')" style="background:#10b981; border-color:#10b981; padding:0.5rem 1.25rem; font-weight:700;">
+            ▶️ Start WABot
+          </button>
+          <button id="btn-stop-wabot" onclick="controlWabot('stop')" class="secondary" style="background:#ef4444; border-color:#ef4444; color:#fff; padding:0.5rem 1.25rem; font-weight:700;">
+            ⏹️ Stop WABot
+          </button>
+          <span id="wabot-action-feedback" style="font-size:0.9rem; font-weight:600; margin-left:0.5rem;"></span>
+        </div>
+
+        <!-- Live Log Console -->
+        <div style="background:#090d16; border:1px solid var(--border-color); border-radius:8px; padding:1rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <span style="font-weight:700; font-size:0.9rem; color:#38bdf8;">📜 Live WABot Daemon Logs</span>
+              <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
+                <input type="checkbox" id="wabot-log-autorefresh" checked style="margin:0;">
+                Auto-refresh (3s)
+              </label>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <button onclick="loadWabotLogs()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🔄 Fetch Latest</button>
+              <button onclick="clearWabotConsole()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🧹 Clear Console</button>
+            </div>
+          </div>
+          <pre id="wabot-log-terminal" style="background:#05070d; color:#e2e8f0; font-family:'Courier New', monospace; font-size:0.82rem; padding:1rem; border-radius:6px; max-height:400px; overflow-y:auto; white-space:pre-wrap; word-break:break-all; border:1px solid #1e293b; margin:0;">Connecting to supervisor logs...</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: ENGINE & CONFIGURATION -->
+    <section id="pane-config" class="tab-pane">
+      <div class="card-box">
+        <h3 style="margin-top:0;">WhatsApp Automation Engine Mode</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem;">
+          Select the active backend engine used by WABot for message dispatching and automation.
+        </p>
+
+        <div class="engine-cards">
+          <!-- WAP Option Card -->
+          <div id="card-wap" class="engine-card selected" onclick="selectEngineOption('wap')">
+            <input type="radio" name="engine_select" id="radio-wap" value="wap" checked>
+            <div class="engine-header" style="color:#34d399;">WAP (Playwright WYSIWYT Engine)</div>
+            <ul class="engine-features">
+              <li><strong>Port</strong>: 3001 (Internal Browser Engine)</li>
+              <li><strong>Call Logs</strong>: Scrapes visual Calls tab with duration & phone numbers.</li>
+              <li><strong>DOM Proofing</strong>: Viewport screenshots & native typing events.</li>
+              <li><strong>Group Media</strong>: Automated periodic media purging.</li>
+            </ul>
+          </div>
+
+          <!-- WAHA Option Card -->
+          <div id="card-waha" class="engine-card" onclick="selectEngineOption('waha')">
+            <input type="radio" name="engine_select" id="radio-waha" value="waha">
+            <div class="engine-header" style="color:#60a5fa;">WAHA (WhatsApp HTTP API)</div>
+            <ul class="engine-features">
+              <li><strong>Port</strong>: 3000 / 3005 (Docker Container)</li>
+              <li><strong>Protocol</strong>: Pure WebSocket via Baileys (NOWEB Engine).</li>
+              <li><strong>Storage</strong>: Deployed with 81 GB space on container runtime.</li>
+              <li><strong>Call Logs</strong>: Real-time call events (historical logs unavailable).</li>
+            </ul>
+          </div>
+        </div>
+
+        <form id="config-form" onsubmit="event.preventDefault(); requestSaveConfig();">
+          <div class="grid">
+            <div>
+              <label for="cfg-period">Default Period (Seconds)</label>
+              <input type="number" id="cfg-period" min="60" max="86400" value="600" required>
+            </div>
+            <div>
+              <label for="cfg-jitter">Jitter Percentage (%)</label>
+              <input type="number" id="cfg-jitter" min="0" max="50" value="15" required>
+            </div>
+            <div>
+              <label for="cfg-unread">Unread Badge Guard</label>
+              <input type="text" id="cfg-unread" value="unread message" required>
+            </div>
+          </div>
+
+          <div style="margin-top:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <span id="save-status" style="font-size:0.9rem; color:#34d399; font-weight:600;"></span>
+            <button type="submit" style="padding:0.6rem 1.8rem; font-weight:700;">💾 Save Configuration</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 4: CALL LOGS -->
+    <section id="pane-calls" class="tab-pane">
+      <div class="card-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+          <div>
+            <h3 style="margin:0;">Historical WhatsApp Call Logs</h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">
+              Extracted directly from the visual WhatsApp Calls drawer (Duration & exact dialed number).
+            </p>
+          </div>
+          <div>
+            <button onclick="loadCallLogs()" class="secondary" style="padding:0.4rem 1rem; font-size:0.85rem;">🔄 Refresh Calls</button>
+          </div>
+        </div>
+
+        <!-- WAHA Warning when in WAHA mode -->
+        <div id="waha-call-warning" style="display:none; background:rgba(59, 130, 246, 0.15); border-left:4px solid #3b82f6; padding:1rem; border-radius:6px; margin-bottom:1.5rem;">
+          <h4 style="margin:0 0 0.5rem 0; color:#60a5fa;">ℹ️ Current Active Engine: WAHA</h4>
+          <p style="margin:0; font-size:0.9rem; line-height:1.5; color:#bfdbfe;">
+            WAHA operates on the multi-device companion WebSocket protocol, which does not sync historical call journals down from the primary phone.
+            <strong>To view and extract call logs with duration and dialed numbers, switch WABot engine mode to WAP in the Configuration tab.</strong>
+          </p>
+          <div style="margin-top:0.75rem;">
+            <button onclick="switchTab('config')" style="padding:0.35rem 0.9rem; font-size:0.8rem;">Switch to WAP Mode</button>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table id="calls-table">
+            <thead>
+              <tr>
+                <th>Contact / Name</th>
+                <th>Dialed Phone Number</th>
+                <th>Type</th>
+                <th>Direction</th>
+                <th>Status</th>
+                <th>Call Duration</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="calls-table-body">
+              <tr>
+                <td colspan="7" style="text-align:center; color:var(--text-muted);">Loading call logs...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: SESSION & RELOGIN -->
+    <section id="pane-login" class="tab-pane">
+      <div class="card-box">
+        <h3 style="margin-top:0;">WhatsApp Authentication & Session Linking</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem;">
+          Link your WhatsApp account to the active engine (<span id="login-engine-name">WAP</span>).
+        </p>
+
+        <div class="grid">
+          <!-- QR Code Option -->
+          <div style="text-align:center; background:#0f172a; padding:1.5rem; border-radius:8px; border:1px solid var(--border-color);">
+            <h4 style="margin-top:0;">QR Code Pairing</h4>
+            <p style="color:var(--text-muted); font-size:0.85rem;">Scan this QR code with WhatsApp (Linked Devices > Link a device):</p>
+            <div style="margin:1rem auto; width:220px; height:220px; background:#fff; padding:10px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+              <img id="qr-code-img" src="/api/qr?format=image" alt="QR Code" style="max-width:100%; max-height:100%;">
+            </div>
+            <button onclick="refreshQr()" class="secondary" style="padding:0.4rem 1rem; font-size:0.85rem;">🔄 Refresh QR Code</button>
+          </div>
+
+          <!-- Phone Number Pairing Option -->
+          <div style="background:#0f172a; padding:1.5rem; border-radius:8px; border:1px solid var(--border-color);">
+            <h4 style="margin-top:0;">Alternative: Phone Number Pairing</h4>
+            <p style="color:var(--text-muted); font-size:0.85rem;">
+              Link using an 8-character pairing code sent to your primary WhatsApp phone without scanning:
+            </p>
+            <div style="margin-top:1.5rem;">
+              <a id="linknumber-link" href="#" target="_blank" role="button" style="width:100%; text-align:center; font-weight:700;">
+                🔗 Open One-Click Phone Pairing Dashboard
+              </a>
+            </div>
+            <div style="margin-top:1.5rem;">
+              <a id="waha-dashboard-link" href="#" target="_blank" role="button" class="secondary" style="width:100%; text-align:center; font-weight:700; display:none;">
+                🌐 Open WAHA Web Dashboard
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- DOUBLE CONFIRMATION MODAL -->
+  <div id="confirm-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span>Confirm Engine Switch</span>
+      </div>
+
+      <p style="font-size:0.95rem; margin-bottom:1rem;">
+        You are about to switch the active messaging engine from <strong id="modal-from-engine">WAP</strong> to <strong id="modal-to-engine">WAHA</strong>.
+      </p>
+
+      <div class="modal-warning">
+        <strong>⚠️ CRITICAL NOTICE — SESSION WILL BE LOST:</strong><br>
+        Switching engines immediately decouples the existing WhatsApp session. The active session will be disconnected, and you <strong>MUST re-authenticate / relink</strong> your WhatsApp account on the newly selected engine.
+      </div>
+
+      <label style="display:flex; align-items:flex-start; gap:0.6rem; cursor:pointer; font-size:0.9rem;">
+        <input type="checkbox" id="modal-checkbox" onchange="toggleConfirmButton(this.checked)" style="margin-top:0.2rem;">
+        <span>I acknowledge and confirm that the current session will be lost and I must relink my WhatsApp account.</span>
+      </label>
+
+      <div class="modal-actions">
+        <button onclick="closeModal()" class="secondary" style="padding:0.5rem 1.2rem;">Cancel</button>
+        <button id="modal-confirm-btn" onclick="executeEngineSwitch()" disabled style="padding:0.5rem 1.5rem; background:#ef4444; border-color:#ef4444; font-weight:700;">Confirm & Relogin</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeEngine = "wap";
+    let pendingEngine = "wap";
+    let currentConfig = {};
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+      
+      const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (targetBtn) targetBtn.classList.add('active');
+      const targetPane = document.getElementById('pane-' + tabId);
+      if (targetPane) targetPane.classList.add('active');
+
+      if (tabId === 'calls') loadCallLogs();
+      if (tabId === 'status') refreshScreenshot();
+      if (tabId === 'wabot') {
+        loadWabotStatus();
+        loadWabotLogs();
+      }
+    }
+
+    function selectEngineOption(engine) {
+      pendingEngine = engine;
+      document.getElementById('radio-' + engine).checked = true;
+      document.getElementById('card-wap').classList.toggle('selected', engine === 'wap');
+      document.getElementById('card-waha').classList.toggle('selected', engine === 'waha');
+      if (engine === 'waha') {
+        document.getElementById('card-waha').classList.add('waha-mode');
+      } else {
+        document.getElementById('card-waha').classList.remove('waha-mode');
+      }
+    }
+
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        
+        // Check config to see actual active engine
+        const cfgRes = await fetch('/api/config');
+        if (cfgRes.ok) {
+          currentConfig = await cfgRes.json();
+          activeEngine = currentConfig.engine || "wap";
+        }
+
+        updateEngineBadges(activeEngine, data.status);
+        document.getElementById('stat-active-engine').textContent = activeEngine.toUpperCase();
+        document.getElementById('stat-auth-status').textContent = data.authenticated ? "Authenticated (WORKING)" : data.status;
+        const portNum = (activeEngine === 'wap') ? '3001' : '3000';
+        document.getElementById('stat-engine-port').textContent = `${portNum} (${data.uptimeSeconds || 0}s)`;
+
+        // Update links
+        const host = window.location.hostname;
+        document.getElementById('linknumber-link').href = `http://${host}:9002/linknumber/`;
+        document.getElementById('waha-dashboard-link').href = `http://${host}:3000/dashboard/`;
+        document.getElementById('waha-dashboard-link').style.display = (activeEngine === 'waha') ? 'block' : 'none';
+
+        // Select active engine in config tab if not dirty
+        if (!document.getElementById('confirm-modal').style.display || document.getElementById('confirm-modal').style.display === 'none') {
+          selectEngineOption(activeEngine);
+        }
+      } catch (err) {
+        console.warn("Status poll error:", err);
+      }
+    }
+
+    function updateEngineBadges(engine, status) {
+      const modeBadge = document.getElementById('active-mode-badge');
+      const modeText = document.getElementById('active-mode-text');
+      const statusText = document.getElementById('engine-status-text');
+
+      if (engine === 'waha') {
+        modeBadge.className = 'badge badge-waha';
+        modeText.textContent = 'MODE: WAHA (HTTP API)';
+      } else {
+        modeBadge.className = 'badge badge-wap';
+        modeText.textContent = 'MODE: WAP (WYSIWYT)';
+      }
+
+      statusText.textContent = `HEALTH: ${status || 'WORKING'}`;
+      document.getElementById('login-engine-name').textContent = engine.toUpperCase();
+    }
+
+    async function loadWabotStatus() {
+      try {
+        const res = await fetch('/api/wabot/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const badge = document.getElementById('wabot-daemon-badge');
+        const badgeText = document.getElementById('wabot-daemon-text');
+        const pulse = document.getElementById('wabot-pulse-dot');
+        const stateEl = document.getElementById('wabot-stat-state');
+        const pidEl = document.getElementById('wabot-stat-pid');
+        const uptimeEl = document.getElementById('wabot-stat-uptime');
+        const superEl = document.getElementById('wabot-stat-supervisor');
+        const mainWabotCard = document.getElementById('stat-wabot-service');
+        const host = window.location.hostname;
+        const supLink = document.getElementById('supervisor-raw-link');
+        if (supLink) supLink.href = `http://${host}:9001/`;
+
+        const state = (data.statename || 'UNKNOWN').toUpperCase();
+        if (badgeText) badgeText.textContent = `WABOT: ${state}`;
+        if (stateEl) {
+          stateEl.textContent = state;
+          stateEl.style.color = (state === 'RUNNING') ? '#34d399' : (state === 'STOPPED' ? '#f87171' : '#fbbf24');
+        }
+        if (mainWabotCard) {
+          mainWabotCard.textContent = `${state} (PID ${data.pid || 0})`;
+          mainWabotCard.style.color = (state === 'RUNNING') ? '#34d399' : (state === 'STOPPED' ? '#f87171' : '#fbbf24');
+        }
+
+        if (badge) {
+          if (state === 'RUNNING') {
+            badge.style.background = 'rgba(16, 185, 129, 0.2)';
+            badge.style.color = '#34d399';
+            badge.style.borderColor = '#10b981';
+            if (pulse) pulse.style.backgroundColor = '#34d399';
+          } else if (state === 'STOPPED') {
+            badge.style.background = 'rgba(239, 68, 68, 0.2)';
+            badge.style.color = '#f87171';
+            badge.style.borderColor = '#ef4444';
+            if (pulse) pulse.style.backgroundColor = '#f87171';
+          } else {
+            badge.style.background = 'rgba(245, 158, 11, 0.2)';
+            badge.style.color = '#fbbf24';
+            badge.style.borderColor = '#f59e0b';
+            if (pulse) pulse.style.backgroundColor = '#fbbf24';
+          }
+        }
+
+        if (pidEl) pidEl.textContent = data.pid || '-';
+        if (uptimeEl) {
+          const up = data.uptimeSeconds || 0;
+          const mins = Math.floor(up / 60);
+          const secs = up % 60;
+          uptimeEl.textContent = (mins > 0) ? `${mins}m ${secs}s` : `${secs}s`;
+        }
+        if (superEl) {
+          superEl.textContent = data.supervisorAvailable ? 'CONNECTED (Port 9001)' : 'OFFLINE';
+          superEl.style.color = data.supervisorAvailable ? '#34d399' : '#ef4444';
+        }
+      } catch (err) {
+        console.warn("Wabot status fetch error:", err);
+      }
+    }
+
+    async function loadWabotLogs() {
+      const term = document.getElementById('wabot-log-terminal');
+      if (!term) return;
+      try {
+        const res = await fetch('/api/wabot/logs?bytes_count=8192');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        let content = '';
+        if (data.stdout && data.stdout.trim().length > 0) {
+          content += data.stdout;
+        } else {
+          content += '[No stdout output recorded yet]\n';
+        }
+        if (data.stderr && data.stderr.trim().length > 0) {
+          content += '\n--- [STDERR] ---\n' + data.stderr;
+        }
+
+        const isScrolledToBottom = term.scrollHeight - term.clientHeight <= term.scrollTop + 50;
+        term.textContent = content;
+        if (isScrolledToBottom) {
+          term.scrollTop = term.scrollHeight;
+        }
+      } catch (err) {
+        console.warn("Wabot log tail error:", err);
+      }
+    }
+
+    async function controlWabot(action) {
+      const feedback = document.getElementById('wabot-action-feedback');
+      feedback.style.color = '#38bdf8';
+      feedback.textContent = `Executing ${action}...`;
+      try {
+        const res = await fetch(`/api/wabot/${action}`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          feedback.style.color = '#34d399';
+          feedback.textContent = `✅ Successfully executed ${action}!`;
+          await loadWabotStatus();
+          await loadWabotLogs();
+          setTimeout(() => { feedback.textContent = ''; }, 3000);
+        } else {
+          feedback.style.color = '#ef4444';
+          feedback.textContent = `❌ Failed: ${data.detail || data.error || 'Unknown error'}`;
+        }
+      } catch (err) {
+        feedback.style.color = '#ef4444';
+        feedback.textContent = `❌ Request error: ${err.message}`;
+      }
+    }
+
+    function clearWabotConsole() {
+      const term = document.getElementById('wabot-log-terminal');
+      if (term) term.textContent = '[Console cleared]';
+    }
+
+    async function loadConfigData() {
+      try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+          const cfg = await res.json();
+          currentConfig = cfg;
+          activeEngine = cfg.engine || "wap";
+          selectEngineOption(activeEngine);
+          
+          if (cfg.defaults) {
+            document.getElementById('cfg-period').value = cfg.defaults.period_seconds || 600;
+            document.getElementById('cfg-jitter').value = cfg.defaults.jitter_percentage || 15;
+            document.getElementById('cfg-unread').value = cfg.defaults.unread_label || "unread message";
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to load config:", e);
+      }
+    }
+
+    function requestSaveConfig() {
+      if (pendingEngine !== activeEngine) {
+        // Trigger Double-Confirmation Modal!
+        document.getElementById('modal-from-engine').textContent = activeEngine.toUpperCase();
+        document.getElementById('modal-to-engine').textContent = pendingEngine.toUpperCase();
+        document.getElementById('modal-checkbox').checked = false;
+        document.getElementById('modal-confirm-btn').disabled = true;
+        document.getElementById('confirm-modal').style.display = 'flex';
+      } else {
+        saveConfigDirectly();
+      }
+    }
+
+    function toggleConfirmButton(checked) {
+      document.getElementById('modal-confirm-btn').disabled = !checked;
+    }
+
+    function closeModal() {
+      document.getElementById('confirm-modal').style.display = 'none';
+      selectEngineOption(activeEngine);
+    }
+
+    async function executeEngineSwitch() {
+      closeModal();
+      const statusSpan = document.getElementById('save-status');
+      statusSpan.style.color = '#38bdf8';
+      statusSpan.textContent = `Switching engine to ${pendingEngine.toUpperCase()} and saving...`;
+
+      try {
+        const payload = {
+          engine: pendingEngine,
+          period_seconds: parseInt(document.getElementById('cfg-period').value, 10),
+          jitter_percentage: parseInt(document.getElementById('cfg-jitter').value, 10),
+          unread_label: document.getElementById('cfg-unread').value
+        };
+
+        const res = await fetch('/api/engine/switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          activeEngine = pendingEngine;
+          updateEngineBadges(activeEngine, "SWITCHED");
+          statusSpan.style.color = '#34d399';
+          statusSpan.textContent = `✅ Switched to ${activeEngine.toUpperCase()}! Opening login page in new tab...`;
+
+          // Double Confirm Action: Open new tab to login page
+          const loginTarget = data.loginUrl || (activeEngine === 'waha' ? `http://${window.location.hostname}:3000/dashboard` : `/login?engine=wap`);
+          window.open(loginTarget, '_blank');
+
+          // Refresh status after 1s
+          setTimeout(() => {
+            loadStatus();
+            loadWabotStatus();
+          }, 1000);
+        } else {
+          statusSpan.style.color = '#ef4444';
+          statusSpan.textContent = `Error: ${data.error || 'Failed to switch'}`;
+        }
+      } catch (err) {
+        statusSpan.style.color = '#ef4444';
+        statusSpan.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    async function saveConfigDirectly() {
+      const statusSpan = document.getElementById('save-status');
+      statusSpan.textContent = 'Saving configuration...';
+
+      try {
+        const payload = {
+          period_seconds: parseInt(document.getElementById('cfg-period').value, 10),
+          jitter_percentage: parseInt(document.getElementById('cfg-jitter').value, 10),
+          unread_label: document.getElementById('cfg-unread').value
+        };
+
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          statusSpan.style.color = '#34d399';
+          statusSpan.textContent = '✅ Configuration saved successfully!';
+          setTimeout(() => { statusSpan.textContent = ''; }, 3000);
+        }
+      } catch (err) {
+        statusSpan.style.color = '#ef4444';
+        statusSpan.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    async function loadCallLogs() {
+      const tbody = document.getElementById('calls-table-body');
+      const wahaWarning = document.getElementById('waha-call-warning');
+
+      if (activeEngine === 'waha') {
+        wahaWarning.style.display = 'block';
+      } else {
+        wahaWarning.style.display = 'none';
+      }
+
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Fetching call logs...</td></tr>';
+      try {
+        const res = await fetch('/api/calls?limit=25&includeDetails=true');
+        const calls = await res.json();
+        
+        if (!calls || calls.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">No call logs recorded.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = calls.map(c => `
+          <tr>
+            <td><strong>${escapeHtml(c.contactName || c.phoneNumber || 'Unknown')}</strong></td>
+            <td><code style="color:#38bdf8;">${escapeHtml(c.phoneNumber || '-')}</code></td>
+            <td><span class="badge-tag ${c.type === 'video' ? 'tag-video' : 'tag-audio'}">${escapeHtml(c.type || 'audio')}</span></td>
+            <td><span style="text-transform:capitalize;">${escapeHtml(c.direction || 'incoming')}</span></td>
+            <td><span class="badge-tag ${c.isMissed ? 'tag-missed' : 'tag-answered'}">${escapeHtml(c.status || (c.isMissed ? 'missed' : 'answered'))}</span></td>
+            <td><strong>${escapeHtml(c.duration || '0s')}</strong></td>
+            <td style="color:var(--text-muted); font-size:0.85rem;">${escapeHtml(c.timestamp || '-')}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444;">Error fetching calls: ${escapeHtml(e.message)}</td></tr>`;
+      }
+    }
+
+    function refreshScreenshot() {
+      const img = document.getElementById('viewport-stream');
+      if (img) img.src = '/api/screenshot?t=' + Date.now();
+    }
+
+    function refreshQr() {
+      const img = document.getElementById('qr-code-img');
+      if (img) img.src = '/api/qr?format=image&t=' + Date.now();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Init
+    loadConfigData();
+    loadStatus();
+    loadWabotStatus();
+    loadWabotLogs();
+    setInterval(loadStatus, 5000);
+    setInterval(loadWabotStatus, 5000);
+    setInterval(() => {
+      const autorefresh = document.getElementById('wabot-log-autorefresh');
+      if (autorefresh && autorefresh.checked) {
+        loadWabotLogs();
+      }
+    }, 3000);
+  </script>
+</body>
+</html>
