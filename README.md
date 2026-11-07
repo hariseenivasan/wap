@@ -1,14 +1,34 @@
 # WAP (WhatsApp Playwright Framework API)
 
-> **What-You-See-Is-What-You-Test (WYSIWYT) Admin Engine for WhatsApp Web**
+> **What-You-See-Is-What-You-Test (WYSIWYT) Administration & Automation Engine for WhatsApp Web**
 
-WAP is a containerized, browser-backed REST API for WhatsApp Web automation built with **Playwright** and **FastAPI**. It is designed as a visual, *"What-You-See-Is-What-You-Test"* implementation of the WAHA API contract.
+WAP is a containerized, browser-backed REST API for WhatsApp Web built with **Playwright** and **FastAPI**. It is designed as a visual, *"What-You-See-Is-What-You-Test"* implementation of the WAHA API contract tailored specifically for administrators, bot developers, and devops teams.
 
-While reverse-engineered WebSocket clients (like WAHA) operate at the binary wire level, WAP drives the actual **WhatsApp Web visual DOM**. This allows developers and administrators to perform operations that protocol-level clients cannot:
-* **Historical Call Log Extraction**: Scrapes the visual Calls tab to extract exact call durations, dialed phone numbers, direction, and audio/video status.
-* **Group Media Lifecycle Management**: Scans group media and automatically purges old images/videos after a configurable retention threshold.
-* **Visual Audit & Screenshot Proofing**: Live viewport screenshots (`/api/screenshot`) and QR capture for visual debugging.
-* **Auto-Greeting & Message Dispatch**: Native Lexical editor keystroke typing and outgoing message bubble delivery verification.
+---
+
+## 🎯 Key Admin Use Cases
+
+1. **Auto-Read & Auto-Greet Bot**:
+   Automatically monitors unread incoming conversations, parses customer queries, and sends automated welcome or out-of-office greetings (`examples/auto_greet.py`).
+2. **Scheduled Group Media Purging**:
+   Automatically scans group chats and purges high-volume media (images, videos, attachments) older than a configured retention window (e.g. 24h, 48h, 7 days) to conserve storage and maintain hygiene (`examples/auto_clean_group_media.py`).
+3. **Historical Call Log Auditing (WAP Exclusive)**:
+   Extracts complete call journal records from WhatsApp Web, including **exact dialed phone numbers**, **call duration**, direction (incoming/outgoing), and status (answered/missed), which binary WebSocket clients cannot access (`examples/export_call_logs.py`).
+4. **WYSIWYT Visual Verification & Proofing**:
+   Live internal viewport screenshots (`GET /api/screenshot`) and QR capture for visual debugging without needing an X11/VNC display.
+
+---
+
+## 🆚 Why WAP alongside WAHA?
+
+| Feature | WAHA (HTTP API) | WAP (Playwright Admin Engine) |
+| :--- | :--- | :--- |
+| **Protocol Layer** | Binary WebSockets / Baileys / Puppeteer | Visual DOM via Playwright Chromium |
+| **Historical Call Logs** | ❌ Not available over companion socket | ✅ Extracted from visual Calls tab & drawer |
+| **Exact Dialed Number & Duration** | ❌ Not exposed in sync protocol | ✅ Parsed directly from Call Info DOM |
+| **Group Media Auto-Purge** | Limited to message revokes | ✅ Dedicated DOM & API media scanner |
+| **Visual Proofing** | Viewport stream or screenshots | ✅ Native viewport capture (`/api/screenshot`) |
+| **Message Keystroke Emulation** | Emulated payload | ✅ Native Lexical keyboard event typing |
 
 ---
 
@@ -26,13 +46,13 @@ While reverse-engineered WebSocket clients (like WAHA) operate at the binary wir
    ```bash
    docker-compose up -d
    ```
-   Or directly via Docker:
+   Or run directly:
    ```bash
-   docker run -d -p 3001:3001 -v $(pwd)/session:/app/userdata hariseenivasan/wap
+   docker run -d --name wap -p 3001:3001 -v $(pwd)/session:/app/userdata hariseenivasan/wap
    ```
 
 3. **Scan the QR Code**:
-   Open `http://localhost:3001/api/qr` in your browser and scan the QR code with WhatsApp (**Linked Devices > Link a device**).
+   Open `http://localhost:3001/api/qr` in your browser and link your device (**Linked Devices > Link a device**).
 
 4. **Verify Session Health**:
    ```bash
@@ -129,7 +149,7 @@ Deletes or revokes a message in the active chat.
 
 ---
 
-### 3. Call Log Extraction (WAP Exclusive)
+### 3. Historical Call Log Extraction (WAP Exclusive)
 
 #### `GET /api/calls`
 Extracts historical call records from the visual Calls tab. When `includeDetails=true` is enabled, WAP clicks each call item to open the Call Info drawer and extract the exact dialed phone number and call duration.
@@ -196,16 +216,16 @@ Scans a group chat, locates image and video messages older than a threshold, and
 
 ---
 
-## 🛠️ Developer Examples
+## 🛠️ Ready-to-Use Admin Scripts
 
-Three standalone developer examples are included in the `examples/` directory:
+Three standalone admin tools are provided in `examples/`:
 
 1. **Auto-Purge Group Media** (`examples/auto_clean_group_media.py`):
    ```bash
    python examples/auto_clean_group_media.py --group "Project Workspace" --hours 48
    ```
 
-2. **Export Call Logs** (`examples/export_call_logs.py`):
+2. **Export Call Logs to JSON** (`examples/export_call_logs.py`):
    ```bash
    python examples/export_call_logs.py --output my_calls.json --limit 50
    ```

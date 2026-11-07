@@ -6,7 +6,10 @@ from fastapi import FastAPI, HTTPException, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from src.browser_manager import BrowserManager
+try:
+    from src.browser_manager import BrowserManager
+except (ImportError, ModuleNotFoundError):
+    from .browser_manager import BrowserManager
 
 USER_DATA_DIR = os.getenv("USER_DATA_DIR", "./userdata")
 browser = BrowserManager(user_data_dir=USER_DATA_DIR)
@@ -75,7 +78,7 @@ async def get_screenshot():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/qr", summary="Authentication QR Code")
-async def get_qr(format: str = Query("image", enum=["image", "json"])):
+async def get_qr(format: str = Query("image", pattern="^(image|json)$")):
     try:
         data = await browser.get_qr_screenshot()
         if format == "image":
@@ -126,7 +129,7 @@ async def get_calls(
     limit: int = 20,
     includeDetails: bool = True,
     missedOnly: bool = False,
-    type: Optional[str] = Query(None, enum=["audio", "video"])
+    type: Optional[str] = Query(None, pattern="^(audio|video)$")
 ):
     try:
         return await browser.get_calls(
