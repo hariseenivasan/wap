@@ -610,6 +610,64 @@
       flex-shrink: 0;
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
+
+    /* Floating Autocomplete Dropdown */
+    .autocomplete-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #090d16;
+      border: 1px solid #38bdf8;
+      border-radius: 8px;
+      margin-top: 4px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 9999;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .autocomplete-item {
+      padding: 0.6rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background 0.15s ease;
+      color: #f8fafc;
+      font-size: 0.88rem;
+    }
+    .autocomplete-item:last-child {
+      border-bottom: none;
+    }
+    .autocomplete-item:hover, .autocomplete-item.active {
+      background: rgba(56, 189, 248, 0.2);
+    }
+    .autocomplete-item .contact-label {
+      font-weight: 600;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .autocomplete-item .contact-source {
+      font-size: 0.72rem;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .autocomplete-highlight {
+      color: #38bdf8;
+      font-weight: 800;
+      background: rgba(56, 189, 248, 0.15);
+      border-radius: 2px;
+      padding: 0 1px;
+    }
   </style>
 </head>
 <body>
@@ -2402,20 +2460,247 @@
       if (msgInput) msgInput.focus();
     }
 
+    function escapeRegex(str) {
+      return (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     async function loadContacts() {
       try {
         const res = await fetch('/api/contacts');
         if (!res.ok) return;
         const data = await res.json();
-        allKnownContacts = data.contacts || [];
+        allKnownContacts = Array.isArray(data) ? data : (data.contacts || []);
+        
         const dl = document.getElementById('contacts-datalist');
         if (dl) {
           dl.innerHTML = allKnownContacts.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.source || '')}</option>`).join('');
         }
+
+        initAllContactAutocompletes();
       } catch (err) {
         console.warn("Failed to load contacts:", err);
       }
     }
+
+    function initAllContactAutocompletes() {
+      // 1. Ad-Hoc recipient input
+      attachContactAutocomplete('adhoc-recipient', {
+        onSelect: (val) => {
+          const input = document.getElementById('adhoc-recipient');
+          if (input) input.value = val;
+          const msg = document.getElementById('adhoc-message');
+          if (msg) msg.focus();
+        }
+      });
+
+      // 2. Greetings chips input
+      attachContactAutocomplete('greeting-chip-input', {
+        onSelect: (val) => {
+          addRecipientChip(val);
+          const input = document.getElementById('greeting-chip-input');
+          if (input) input.value = '';
+        }
+      });
+
+      // 3. Call target contacts (comma separated)
+      attachContactAutocomplete('call-target-contacts', {
+        commaSeparated: true
+      });
+
+      // 4. Default test recipient
+      attachContactAutocomplete('cfg-testing-recipient');
+
+      // 5. Schedule modal contact name
+      attachContactAutocomplete('sched-contact-name');
+    }
+
+    function attachContactAutocomplete(inputId, options = {}) {
+      const inputEl = document.getElementById(inputId);
+      if (!inputEl) return;
+
+      inputEl.removeAttribute('list');
+      inputEl.setAttribute('autocomplete', 'off');
+
+      // For chips input, anchor container is the chips box
+      let anchorBox = inputEl;
+      if (inputEl.classList.contains('chips-input-field')) {
+        anchorBox = inputEl.closest('.chips-input-container') || inputEl;
+      }
+
+      const parent = anchorBox.parentElement;
+      if (parent && getComputedStyle(parent).position === 'static') {
+        parent.style.position = 'relative';
+      }
+
+      // Check if dropdown already exists
+      let dropdown = parent.querySelector(`.autocomplete-dropdown[data-for="${inputId}"]`);
+      if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.className = 'autocomplete-dropdown';
+        dropdown.setAttribute('data-for', inputId);
+        dropdown.style.display = 'none';
+        parent.appendChild(dropdown);
+      }
+
+      let activeIndex = -1;
+      let currentMatches = [];
+
+      function getQuery() {
+        const val = inputEl.value || '';
+        if (options.commaSeparated) {
+          const parts = val.split(',');
+          return parts[parts.length - 1].trim();
+        }
+        return val.trim();
+      }
+
+      function positionDropdown() {
+        dropdown.style.top = (anchorBox.offsetTop + anchorBox.offsetHeight + 4) + 'px';
+        dropdown.style.left = anchorBox.offsetLeft + 'px';
+        dropdown.style.width = anchorBox.offsetWidth + 'px';
+      }
+
+      function renderSuggestions() {
+        if (allKnownContacts.length === 0) {
+          fetch('/api/contacts').then(r => r.json()).then(data => {
+            allKnownContacts = Array.isArray(data) ? data : (data.contacts || []);
+            renderSuggestions();
+          }).catch(() => {});
+        }
+
+        const query = getQuery();
+        const qLower = query.toLowerCase();
+
+        let matches = [];
+        if (!qLower) {
+          matches = allKnownContacts.slice(0, 10);
+        } else {
+          matches = allKnownContacts.filter(c => c.name && c.name.toLowerCase().includes(qLower));
+        }
+
+        currentMatches = matches;
+        activeIndex = -1;
+
+        if (matches.length === 0) {
+          if (qLower) {
+            dropdown.innerHTML = `
+              <div class="autocomplete-item" onmousedown="event.preventDefault(); window._autoSelectDirect('${inputId}', '${escapeAttr(query)}');">
+                <span class="contact-label">➕ Use &quot;<strong>${escapeHtml(query)}</strong>&quot;</span>
+                <span class="contact-source">New</span>
+              </div>
+            `;
+            positionDropdown();
+            dropdown.style.display = 'block';
+          } else {
+            dropdown.style.display = 'none';
+          }
+          return;
+        }
+
+        let html = '';
+        matches.slice(0, 15).forEach((c, idx) => {
+          const isPhone = /^\+?[0-9\s\-]+$/.test(c.name);
+          const icon = isPhone ? '📞' : '👤';
+          let displayName = escapeHtml(c.name);
+          if (qLower) {
+            const re = new RegExp(`(${escapeRegex(query)})`, 'gi');
+            displayName = escapeHtml(c.name).replace(re, '<span class="autocomplete-highlight">$1</span>');
+          }
+
+          html += `
+            <div class="autocomplete-item" data-idx="${idx}" onmousedown="event.preventDefault(); window._autoSelectIndex('${inputId}', ${idx});">
+              <span class="contact-label">
+                <span>${icon}</span>
+                <span>${displayName}</span>
+              </span>
+              <span class="contact-source">${escapeHtml(c.source || 'contact')}</span>
+            </div>
+          `;
+        });
+
+        dropdown.innerHTML = html;
+        positionDropdown();
+        dropdown.style.display = 'block';
+      }
+
+      inputEl._autoMatches = () => currentMatches;
+      inputEl._autoOptions = options;
+
+      inputEl.addEventListener('input', renderSuggestions);
+      inputEl.addEventListener('focus', renderSuggestions);
+
+      inputEl.addEventListener('keydown', (e) => {
+        if (dropdown.style.display === 'none') {
+          if (e.key === 'ArrowDown') {
+            renderSuggestions();
+          }
+          return;
+        }
+
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+        if (items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % items.length;
+          items.forEach((it, i) => it.classList.toggle('active', i === activeIndex));
+          if (items[activeIndex]) items[activeIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + items.length) % items.length;
+          items.forEach((it, i) => it.classList.toggle('active', i === activeIndex));
+          if (items[activeIndex]) items[activeIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          if (activeIndex >= 0 && activeIndex < items.length) {
+            e.preventDefault();
+            items[activeIndex].dispatchEvent(new MouseEvent('mousedown'));
+          }
+        } else if (e.key === 'Escape') {
+          dropdown.style.display = 'none';
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!parent.contains(e.target)) {
+          dropdown.style.display = 'none';
+        }
+      });
+    }
+
+    window._autoSelectIndex = function(inputId, idx) {
+      const inputEl = document.getElementById(inputId);
+      if (!inputEl) return;
+      const matches = inputEl._autoMatches ? inputEl._autoMatches() : [];
+      if (idx >= 0 && idx < matches.length) {
+        window._autoApplySelection(inputId, matches[idx].name);
+      }
+    };
+
+    window._autoSelectDirect = function(inputId, val) {
+      window._autoApplySelection(inputId, val);
+    };
+
+    window._autoApplySelection = function(inputId, val) {
+      const inputEl = document.getElementById(inputId);
+      if (!inputEl) return;
+      const opts = inputEl._autoOptions || {};
+
+      if (opts.onSelect) {
+        opts.onSelect(val);
+      } else if (opts.commaSeparated) {
+        const parts = inputEl.value.split(',').map(s => s.trim()).filter(Boolean);
+        if (parts.length > 0) parts.pop();
+        parts.push(val);
+        inputEl.value = parts.join(', ') + ', ';
+      } else {
+        inputEl.value = val;
+      }
+
+      const parent = inputEl.parentElement;
+      const dropdown = parent ? parent.querySelector(`.autocomplete-dropdown[data-for="${inputId}"]`) : null;
+      if (dropdown) dropdown.style.display = 'none';
+      inputEl.focus();
+    };
 
     async function loadTestingConfig() {
       try {
@@ -2985,6 +3270,7 @@
     }
 
     // Init
+    initAllContactAutocompletes();
     loadConfigData();
     loadStatus();
     loadWabotStatus();

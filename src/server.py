@@ -1040,6 +1040,8 @@ async def get_contacts(search: Optional[str] = Query(None)):
         for c in chats:
             name = c.get("name")
             if name and name not in seen:
+                if "unread message" in name.lower() or name in ["Favorites", "Add favorite", "Recent"]:
+                    continue
                 seen.add(name)
                 contacts.append({"name": name, "source": "chat", "unread": c.get("unreadCount", 0)})
     except Exception:
@@ -1068,7 +1070,7 @@ async def get_contacts(search: Optional[str] = Query(None)):
         calls = await browser.get_calls(limit=25)
         for cl in calls:
             c_name = cl.get("contactName") or cl.get("phoneNumber")
-            if c_name and c_name not in seen and c_name not in ["Favorites", "Add favorite", "Recent"]:
+            if c_name and c_name not in seen and c_name not in ["Favorites", "Add favorite", "Recent"] and "unread message" not in c_name.lower():
                 seen.add(c_name)
                 contacts.append({"name": c_name, "source": "call"})
     except Exception:
