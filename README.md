@@ -1,34 +1,69 @@
-# WAP (WhatsApp Playwright Framework API)
+# WAP (WhatsApp Playwright Framework API & Control Center)
 
-> **What-You-See-Is-What-You-Test (WYSIWYT) Administration & Automation Engine for WhatsApp Web**
+> **What-You-See-Is-What-You-Test (WYSIWYT) Administration, Automation & Control Engine for WhatsApp Web**
 
-WAP is a containerized, browser-backed REST API for WhatsApp Web built with **Playwright** and **FastAPI**. It is designed as a visual, *"What-You-See-Is-What-You-Test"* implementation of the WAHA API contract tailored specifically for administrators, bot developers, and devops teams.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)](https://fastapi.tiangolo.com)
+[![Playwright](https://img.shields.io/badge/playwright-1.40+-green.svg)](https://playwright.dev)
+
+WAP is a containerized, browser-backed REST API and web administration suite for WhatsApp Web built with **Playwright** and **FastAPI**. It is engineered as a visual, *"What-You-See-Is-What-You-Test"* companion and alternative to binary socket engines, giving administrators full visual proofing, historical call extraction, automated media maintenance, and an intelligent broadcast suite.
 
 ---
 
-## 🎯 Key Admin Use Cases
+## 🌟 Key Capabilities
 
-1. **Auto-Read & Auto-Greet Bot**:
-   Automatically monitors unread incoming conversations, parses customer queries, and sends automated welcome or out-of-office greetings (`examples/auto_greet.py`).
-2. **Scheduled Group Media Purging**:
-   Automatically scans group chats and purges high-volume media (images, videos, attachments) older than a configured retention window (e.g. 24h, 48h, 7 days) to conserve storage and maintain hygiene (`examples/auto_clean_group_media.py`).
-3. **Historical Call Log Auditing (WAP Exclusive)**:
-   Extracts complete call journal records from WhatsApp Web, including **exact dialed phone numbers**, **call duration**, direction (incoming/outgoing), and status (answered/missed), which binary WebSocket clients cannot access (`examples/export_call_logs.py`).
-4. **WYSIWYT Visual Verification & Proofing**:
-   Live internal viewport screenshots (`GET /api/screenshot`) and QR capture for visual debugging without needing an X11/VNC display.
+### 1. 📞 Historical Call Log Auditing (WAP Exclusive)
+* Extracts historical call records directly from WhatsApp Web's visual Calls tab and Call Info drawer:
+  * **Exact dialed / caller phone number** (even for non-synced contacts).
+  * **Call duration timers** (`14m 32s`, `0s (Missed)`).
+  * Direction (`incoming`, `outgoing`) and media type (`audio`, `video`).
+  * Status classifications: `Answered (Web)` vs `Missed`.
+* Configurable call extraction modes: `all`, `whitelist`, or `blacklist` contact targeting (`GET` & `POST /api/config/call-extraction`).
+
+### 2. 🎁 Greetings & Multi-Recipient Sequential Broadcast
+* **Email-Style Recipient Chips**: Quick multi-contact selection with instant autocomplete search.
+* **Optional / Blank Captions**: Supports image-only greetings without forcing text, or message templates with dynamic `{name}` interpolation.
+* **Balanced Image Randomizer & Shuffler**: Uses uniform Fisher-Yates distribution to evenly distribute $N$ images across $M$ contacts (e.g., 5 cards across 10 contacts = exactly 2 contacts per card).
+* **AI Magic Card Generation**: Generate thematic greeting cards with zero API keys required (powered by Flux via Pollinations.ai with fallback models). Includes one-click festive tag recommendations.
+* **Dynamic Name Personalization (`/api/media/personalize`)**:
+  * Renders contact names onto images with frosted glass plates and golden calligraphy.
+  * Configurable honorific suffixes (`"and Family"`, `"& Family"`, `"et al."`, `"Ji"`, or `"None"`).
+  * Contacts without names automatically receive clean, unbranded generic greeting cards.
+* **Resilient Disruption Handling**:
+  * **Pause & Resume**: Pause mid-broadcast cleanly without interrupting active messages.
+  * **Safe Abort**: Stop remaining dispatches at any moment.
+  * **Retry Failed / Remaining**: Re-dispatches only unsent or failed contacts; already-delivered contacts never receive duplicate greetings.
+  * Real-time status badges per recipient (`⏳ Pending`, `🚀 Sending...`, `✅ Delivered`, `❌ Failed`).
+
+### 3. 🖥️ Unified Web Control Center & Dashboard (Port 3001)
+* Consolidated single pane of glass for all administrative workflows:
+  * **Live Viewport Proofing**: Real-time headless browser captures (`GET /api/screenshot`).
+  * **Dual Engine Switching**: Seamlessly toggle between WAP and WAHA with confirmation dialogs and auto-redirecting login tabs.
+  * **Supervisor Process Orchestration**: Monitor background daemon state (`RUNNING`, `STOPPED`), PID, and uptime, with restart controls and auto-refreshing terminal logs.
+  * **Visual Schedule Editor**: Interactive cards for adding, editing, and deleting scheduled jobs saved safely in `user_schedules.json` without exposing core configuration.
+  * **Interactive API Docs**: Built-in Swagger UI at `/docs` and ReDoc at `/redoc`.
+
+### 4. 🧹 Group Media Lifecycle Management
+* Automatically scans group conversations and purges high-volume media (images, videos, attachments) older than a specified retention window (e.g. 24h, 48h, 7 days) to conserve disk space (`/api/maintenance/auto-clean-media`).
+
+### 5. 💬 Native DOM Keystroke Emulation & Ad-Hoc Sandbox
+* Types messages directly into WhatsApp Web's Lexical editor to emit genuine keyboard DOM events, minimizing anti-bot heuristics.
+* Ad-hoc test message sandbox for testing delivery without triggering background schedules.
 
 ---
 
 ## 🆚 Why WAP alongside WAHA?
 
-| Feature | WAHA (HTTP API) | WAP (Playwright Admin Engine) |
+| Capability | WAHA (HTTP WebSocket API) | WAP (Playwright Visual Engine) |
 | :--- | :--- | :--- |
-| **Protocol Layer** | Binary WebSockets / Baileys / Puppeteer | Visual DOM via Playwright Chromium |
+| **Protocol Layer** | Multi-Device Binary WebSockets | Visual DOM via Playwright Chromium |
 | **Historical Call Logs** | ❌ Not available over companion socket | ✅ Extracted from visual Calls tab & drawer |
-| **Exact Dialed Number & Duration** | ❌ Not exposed in sync protocol | ✅ Parsed directly from Call Info DOM |
+| **Dialed Numbers & Duration**| ❌ Not exposed in WebSocket sync | ✅ Parsed directly from Call Info DOM |
+| **Visual Telemetry** | Viewport stream or screenshots | ✅ Native viewport capture (`/api/screenshot`) |
 | **Group Media Auto-Purge** | Limited to message revokes | ✅ Dedicated DOM & API media scanner |
-| **Visual Proofing** | Viewport stream or screenshots | ✅ Native viewport capture (`/api/screenshot`) |
-| **Message Keystroke Emulation** | Emulated payload | ✅ Native Lexical keyboard event typing |
+| **Greeting Card Personalization**| ❌ External service needed | ✅ Built-in PIL typography & AI generation |
+| **Broadcast Flow Control** | Sequential raw loop | ✅ Pause, resume, abort, and retry unsent |
 
 ---
 
@@ -46,15 +81,13 @@ WAP is a containerized, browser-backed REST API for WhatsApp Web built with **Pl
    ```bash
    docker-compose up -d
    ```
-   Or run directly:
-   ```bash
-   docker run -d --name wap -p 3001:3001 -v $(pwd)/session:/app/userdata hariseenivasan/wap
-   ```
 
-3. **Scan the QR Code**:
-   Open `http://localhost:3001/api/qr` in your browser and link your device (**Linked Devices > Link a device**).
+3. **Open the Control Center**:
+   Open `http://localhost:3001/` in your browser.
+   * View live QR code or generate an 8-character phone pairing code.
+   * Scan or pair your phone under **WhatsApp > Linked Devices > Link a Device**.
 
-4. **Verify Session Health**:
+4. **Verify Health**:
    ```bash
    curl http://localhost:3001/api/status
    ```
@@ -65,191 +98,163 @@ WAP is a containerized, browser-backed REST API for WhatsApp Web built with **Pl
 
 1. **Install dependencies**:
    ```bash
+   python -m venv venv
+   source venv/bin/activate
    pip install -r requirements.txt
    playwright install chromium
    ```
 
-2. **Start the API server**:
+2. **Start the API Server & Control Center**:
    ```bash
    uvicorn src.server:app --host 0.0.0.0 --port 3001
    ```
 
-3. **Interactive Documentation**:
-   Interactive Swagger documentation is automatically available at:
-   * **Swagger UI**: `http://localhost:3001/docs`
+3. **Explore Documentation**:
+   * **Web Control Center**: `http://localhost:3001/`
+   * **Interactive Swagger UI**: `http://localhost:3001/docs`
    * **ReDoc**: `http://localhost:3001/redoc`
 
 ---
 
-## 📡 API Reference
+## 📡 Core API Reference
 
-### 1. Health & Authentication
+### 1. Health, Session & Viewport
 
 #### `GET /api/status`
-Returns the operational health and authentication state.
-
-* **Response `200 OK`**:
+Returns the operational health, browser engine, and authentication status.
 ```json
 {
   "status": "WORKING",
   "engine": "playwright",
   "authenticated": true,
-  "version": "1.0.0",
-  "uptimeSeconds": 1420
+  "version": "1.1.0",
+  "uptimeSeconds": 3600
 }
 ```
 *Possible Status Values*: `STARTING`, `SCAN_QR_CODE`, `WORKING`, `STOPPED`.
 
 #### `GET /api/qr`
 Retrieves the authentication QR code.
-* **Query Parameters**: `format=image` (default) or `format=json`.
-* **Response**: Binary PNG stream or `{ "qr": "data:image/png;base64,..." }`.
+* **Query Parameters**: `format=image` (default PNG stream) or `format=json`.
 
 #### `GET /api/screenshot`
 Captures a live PNG screenshot of the internal browser viewport for visual verification.
-* **Response**: Binary `image/png` stream.
 
 ---
 
-### 2. Messaging
+### 2. Messaging & Media
 
 #### `POST /api/sendText`
 Sends a text message using native DOM keystroke emulation.
-
-* **Request**:
 ```json
 {
   "chatId": "1234567890@c.us",
-  "text": "Hello from WAP API!"
+  "text": "Hello from WAP!"
 }
 ```
-* **Response `201 Created`**:
+
+#### `POST /api/sendImage`
+Sends an image with an optional caption. If caption is omitted or empty, the image is dispatched cleanly without text.
 ```json
 {
-  "success": true,
-  "messageId": "wap_msg_1793952000000",
   "chatId": "1234567890@c.us",
-  "timestamp": 1793952000
+  "file_path": "/path/to/image.jpg",
+  "caption": "Optional greeting caption"
 }
 ```
 
-#### `GET /api/chats`
-Lists recent conversations with unread counts.
-* **Query Parameters**:
-  * `limit` (int, default: 20)
-  * `unreadOnly` (bool, default: false)
+#### `POST /api/media/upload`
+Uploads an image for greeting distribution or testing (`multipart/form-data`).
 
-#### `GET /api/chats/{chat_id}/messages`
-Retrieves recent messages from a conversation.
-* **Query Parameters**:
-  * `limit` (int, default: 20)
+#### `POST /api/media/personalize`
+Dynamically overlays a contact's name onto an image card with frosted glass typography:
+```json
+{
+  "file_path": "/path/to/base_card.jpg",
+  "name": "Jane Doe",
+  "suffix": "and Family",
+  "greeting_text": "Good Morning"
+}
+```
+*Note*: If `greeting_text` is empty, the nameplate is centered prominently without forcing filler text.
 
-#### `DELETE /api/chats/{chat_id}/messages/{message_id}`
-Deletes or revokes a message in the active chat.
+#### `POST /api/media/generate-ai`
+Generates thematic greeting cards on demand:
+```json
+{
+  "prompt": "Diwali celebration, golden lamps, rangoli",
+  "count": 3
+}
+```
 
 ---
 
-### 3. Historical Call Log Extraction (WAP Exclusive)
+### 3. Historical Call Extraction (WAP Exclusive)
 
 #### `GET /api/calls`
-Extracts historical call records from the visual Calls tab. When `includeDetails=true` is enabled, WAP clicks each call item to open the Call Info drawer and extract the exact dialed phone number and call duration.
-
+Extracts historical calls from WhatsApp Web's visual interface.
 * **Query Parameters**:
-  * `limit` (int, default: 20): Maximum number of call records to retrieve.
-  * `includeDetails` (bool, default: true): Open the Call Info drawer for duration and phone number.
-  * `missedOnly` (bool, default: false): Filter to only missed/unanswered calls.
-  * `type` (string, optional): `"audio"` or `"video"`.
-
-* **Response `200 OK`**:
+  * `limit` (int, default: 25): Maximum records to retrieve.
+  * `includeDetails` (bool, default: true): Opens Call Info drawer for exact dialed numbers and duration.
+  * `missedOnly` (bool, default: false): Filter to missed calls.
 ```json
 [
   {
     "id": "call_0_1793952100",
-    "contactName": "Alice Smith",
+    "contactName": "Alex Carter",
     "phoneNumber": "+1 234 567 8900",
-    "type": "video",
+    "type": "audio",
     "direction": "incoming",
     "status": "answered",
     "isMissed": false,
-    "duration": "14m 32s",
-    "durationSeconds": 872,
-    "timestamp": "Yesterday, 7:42 PM"
-  },
-  {
-    "id": "call_1_1793952050",
-    "contactName": "Bob Jones",
-    "phoneNumber": "+1 987 654 3210",
-    "type": "audio",
-    "direction": "incoming",
-    "status": "missed",
-    "isMissed": true,
-    "duration": "0s",
-    "durationSeconds": 0,
-    "timestamp": "Today, 12:31 PM"
+    "duration": "12m 45s",
+    "durationSeconds": 765,
+    "timestamp": "Friday"
   }
 ]
 ```
 
+#### `GET /api/config/call-extraction` & `POST /api/config/call-extraction`
+Configures targeted extraction rules (`filter_mode`: `all`, `whitelist`, `blacklist`, target contacts, and limit).
+
 ---
 
-### 4. Group Media Lifecycle Management
+### 4. Schedules Management
+
+* `GET /api/schedules`: Lists all configured message schedules.
+* `POST /api/schedules/add`: Appends a new schedule item.
+* `PUT /api/schedules/{index}`: Updates an existing schedule.
+* `DELETE /api/schedules/{index}`: Removes a schedule.
+* `POST /api/schedules/save`: Saves schedule collection safely to `user_schedules.json`.
+
+---
+
+### 5. Group Media Maintenance
 
 #### `POST /api/maintenance/auto-clean-media`
-Scans a group chat, locates image and video messages older than a threshold, and deletes them.
-
-* **Request**:
+Scans group chats and deletes media attachments older than the threshold:
 ```json
 {
-  "chatId": "Project Workspace",
+  "chatId": "Project Updates Group",
   "olderThanHours": 48,
   "deleteForEveryone": false
 }
 ```
-* **Response `200 OK`**:
-```json
-{
-  "success": true,
-  "chatId": "Project Workspace",
-  "deletedCount": 14
-}
-```
 
 ---
 
-## 🖥️ Unified Web Control Center & Dashboard (Port 3001)
+## 🛠️ Standalone Admin Scripts
 
-WAP features a built-in single-page administration control center accessible directly at `http://localhost:3001/` or `http://localhost:3001/dashboard`.
-
-### Capabilities:
-* **Live Telemetry & Viewport Proofing**: Real-time inspection of WhatsApp Web DOM state and headless browser viewport captures (`GET /api/screenshot`).
-* **Dual Engine Management (WAP $\leftrightarrow$ WAHA)**:
-  * View active engine mode (`MODE: WAP (WYSIWYT)` vs `MODE: WAHA (HTTP API)`).
-  * Double-Confirmation Modal safeguards: Prompts the user before changing engines that the companion session will decouple and requires relinking, then automatically launches the appropriate login page in a new browser tab.
-* **Supervisor Process Integration**:
-  * Real-time monitoring of the `wabot` daemon process state (`RUNNING`, `STOPPED`, `STARTING`), PID, and uptime.
-  * Direct process controls (`/api/wabot/restart`, `/api/wabot/start`, `/api/wabot/stop`).
-  * Live log terminal console streaming stdout/stderr with auto-refresh.
-  * Direct shortcut to raw Supervisor console on port 9001.
-* **Historical Call Log Explorer**: Interactive table displaying caller, dialed number, audio/video type, duration, and timestamps.
-* **Session & Relogin Drawer**: QR code display and one-click phone pairing link.
-
----
-
-## 🛠️ Ready-to-Use Admin Scripts
-
-Three standalone admin tools are provided in `examples/`:
-
+Three automation utilities are provided in `examples/`:
 1. **Auto-Purge Group Media** (`examples/auto_clean_group_media.py`):
    ```bash
-   python examples/auto_clean_group_media.py --group "Project Workspace" --hours 48
+   python examples/auto_clean_group_media.py --group "Team Chat" --hours 48
    ```
-
 2. **Export Call Logs to JSON** (`examples/export_call_logs.py`):
    ```bash
-   python examples/export_call_logs.py --output my_calls.json --limit 50
+   python examples/export_call_logs.py --output calls.json --limit 50
    ```
-
-3. **Auto-Greet Incoming Messages** (`examples/auto_greet.py`):
+3. **Auto-Greet Incoming Inquiries** (`examples/auto_greet.py`):
    ```bash
    python examples/auto_greet.py --interval 10
    ```
