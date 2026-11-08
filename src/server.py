@@ -7,8 +7,8 @@ import requests
 import re
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException, Response, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Response, Query, Request, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -21,6 +21,8 @@ USER_DATA_DIR = os.getenv("USER_DATA_DIR", "./userdata")
 WABOT_CONFIG_PATH = os.getenv("WABOT_CONFIG_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config/config.json")))
 WABOT_SCHEDULES_PATH = os.getenv("WABOT_SCHEDULES_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config/user_schedules.json")))
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOADS_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "../uploads"))
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 browser = BrowserManager(user_data_dir=USER_DATA_DIR)
 
@@ -219,6 +221,33 @@ def calculate_schedule_status(entry: dict) -> list:
 class SendTextRequest(BaseModel):
     chatId: str = Field(..., description="Target phone number or group ID, e.g. 1234567890@c.us", example="1234567890@c.us")
     text: str = Field(..., description="Text message content", example="Hello! Testing automated message.")
+    engine: Optional[str] = Field(None, pattern="^(wap|waha)$", description="Engine override")
+
+class SendImageRequest(BaseModel):
+    chatId: str = Field(..., description="Recipient phone number or chat ID", example="1234567890")
+    caption: Optional[str] = Field(None, description="Optional caption for image")
+    file_path: Optional[str] = Field(None, description="Path on disk or image URL")
+    image_id: Optional[str] = Field(None, description="Uploaded image ID")
+    engine: Optional[str] = Field(None, pattern="^(wap|waha)$", description="Engine override")
+
+class TestingConfig(BaseModel):
+    test_message: str = Field("Hello from WABot Test Workspace!", description="Default test message")
+    mode: Optional[str] = Field("wap", pattern="^(wap|waha)$")
+    default_recipient: Optional[str] = Field(None, description="Default test recipient")
+    delay_seconds: float = Field(1.5, ge=0.5, le=10.0)
+
+class AIGenerateRequest(BaseModel):
+    prompt: str = Field(..., description="Base greeting message or visual description")
+    tags: Optional[str] = Field(None, description="Style tags, language, or festive themes")
+    count: int = Field(1, ge=1, le=8, description="Number of unique images to generate")
+
+class PersonalizeCardRequest(BaseModel):
+    image_id: Optional[str] = Field(None, description="Source image ID in uploads")
+    file_path: Optional[str] = Field(None, description="Direct file path to source image")
+    name: Optional[str] = Field(None, description="Recipient contact name")
+    suffix: Optional[str] = Field("and Family", description="Personalization suffix e.g. and Family, et al.")
+    greeting_text: Optional[str] = Field("Good Morning", description="Greeting text")
+    style: Optional[str] = Field("frosted_gold", description="Styling preset: frosted_gold, ribbon_banner, golden_calligraphy")
 
 class SendMediaRequest(BaseModel):
     chatId: str = Field(..., example="1234567890@c.us")
@@ -673,15 +702,383 @@ async def request_auth_code(req: RequestCodeBody):
         except Exception as e:
             return {"success": False, "error": str(e), "engine": "wap"}
 
-@app.post("/api/sendText", status_code=201, summary="Send Text Message")
+@app.post("/api/sendText", status_code=201, summary="Send Text Message (WAP & WAHA)")
 async def send_text(req: SendTextRequest):
+    cfg = load_wabot_config()
+    active_engine = req.engine or cfg.get("engine", "wap")
+    clean_target = req.chatId.replace("@c.us", "").replace("@s.whatsapp.net", "").replace("@g.us", "").strip()
+
+    if active_engine == "waha":
+        waha_url = cfg.get("waha_url", "http://127.0.0.1:3000")
+        try:
+            payload = {
+                "chatId": f"{clean_target}@c.us" if "@" not in clean_target else clean_target,
+                "text": req.text,
+                "session": "default"
+            }
+            resp = requests.post(f"{waha_url}/api/sendText", json=payload, timeout=15)
+            if resp.status_code in (200, 201):
+                return resp.json()
+            err_msg = resp.text
+            try:
+                err_msg = resp.json().get("message") or resp.text
+            except Exception:
+                pass
+            return {"success": False, "error": f"WAHA sendText error ({resp.status_code}): {err_msg}"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"WAHA sendText failed: {e}")
+    else:
+        try:
+            res = await browser.send_text(clean_target, req.text)
+            return res
+        except ValueError as ve:
+            raise HTTPException(status_code=404, detail=str(ve))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/sendImage", status_code=201, summary="Send Image Message (WAP & WAHA)")
+async def send_image(req: SendImageRequest):
+    cfg = load_wabot_config()
+    active_engine = req.engine or cfg.get("engine", "wap")
+    clean_target = req.chatId.replace("@c.us", "").replace("@s.whatsapp.net", "").replace("@g.us", "").strip()
+
+    # Resolve file path
+    target_path = req.file_path
+    if req.image_id and not target_path:
+        for f in os.listdir(UPLOADS_DIR):
+            if f.startswith(req.image_id):
+                target_path = os.path.join(UPLOADS_DIR, f)
+                break
+                
+    if not target_path or not os.path.exists(target_path):
+        raise HTTPException(status_code=400, detail="Valid image file path or image_id must be provided.")
+
+    if active_engine == "waha":
+        waha_url = cfg.get("waha_url", "http://127.0.0.1:3000")
+        try:
+            import base64
+            with open(target_path, "rb") as img_f:
+                b64_data = base64.b64encode(img_f.read()).decode("utf-8")
+            ext = os.path.splitext(target_path)[1].lstrip(".").lower() or "jpeg"
+            mime = f"image/{ext}" if ext in ["jpeg", "jpg", "png", "webp", "gif"] else "application/octet-stream"
+            
+            payload = {
+                "chatId": f"{clean_target}@c.us" if "@" not in clean_target else clean_target,
+                "file": {
+                    "mimetype": mime,
+                    "filename": os.path.basename(target_path),
+                    "url": f"data:{mime};base64,{b64_data}"
+                },
+                "caption": req.caption or ""
+            }
+            resp = requests.post(f"{waha_url}/api/sendImage", json=payload, timeout=25)
+            if resp.status_code in (200, 201):
+                return resp.json()
+            err_msg = resp.text
+            try:
+                err_msg = resp.json().get("message") or resp.text
+            except Exception:
+                pass
+            return {"success": False, "error": f"WAHA sendImage error ({resp.status_code}): {err_msg}"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"WAHA sendImage failed: {e}")
+    else:
+        try:
+            return await browser.send_image(target=clean_target, file_path=target_path, caption=req.caption)
+        except ValueError as ve:
+            raise HTTPException(status_code=404, detail=str(ve))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/media/upload", summary="Upload Image for Greetings / Broadcast")
+async def upload_media(file: UploadFile = File(...)):
     try:
-        res = await browser.send_text(req.chatId, req.text)
-        return res
-    except ValueError as ve:
-        raise HTTPException(status_code=404, detail=str(ve))
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in [".jpg", ".jpeg", ".png", ".webp", ".gif"]:
+            raise HTTPException(status_code=400, detail="Only image files (.jpg, .jpeg, .png, .webp, .gif) are supported.")
+        
+        img_id = f"img_{int(time.time()*1000)}_{os.urandom(4).hex()}"
+        safe_filename = f"{img_id}{ext}"
+        target_path = os.path.join(UPLOADS_DIR, safe_filename)
+        
+        content = await file.read()
+        with open(target_path, "wb") as f:
+            f.write(content)
+            
+        return {
+            "success": True,
+            "imageId": img_id,
+            "filename": file.filename,
+            "path": target_path,
+            "url": f"/api/media/{safe_filename}",
+            "size": len(content)
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/media/{filename}", summary="Serve Uploaded Media File")
+async def get_media_file(filename: str):
+    safe_name = os.path.basename(filename)
+    path = os.path.join(UPLOADS_DIR, safe_name)
+    if os.path.exists(path):
+        return FileResponse(path)
+    raise HTTPException(status_code=404, detail="Media file not found")
+
+@app.post("/api/media/ai-generate", summary="AI Magic Image Generation for Greetings")
+async def ai_generate_images(req: AIGenerateRequest):
+    import urllib.parse
+    import random
+    
+    cfg = load_wabot_config()
+    xai_api_key = cfg.get("xai_api_key") or os.getenv("XAI_API_KEY")
+    
+    prompt_parts = []
+    if req.tags:
+        prompt_parts.append(req.tags.strip())
+    if req.prompt:
+        prompt_parts.append(req.prompt.strip())
+    prompt_parts.append("festive greeting card art, high quality, vibrant 4k aesthetic wallpaper")
+    full_prompt = ", ".join(prompt_parts)
+    
+    results = []
+    count = min(max(req.count, 1), 8)
+    
+    for i in range(count):
+        seed = random.randint(10000, 9999999)
+        img_id = f"ai_{int(time.time()*1000)}_{i}_{seed}"
+        filename = f"{img_id}.jpg"
+        target_path = os.path.join(UPLOADS_DIR, filename)
+        
+        # Check xAI Grok API key if available
+        if xai_api_key:
+            try:
+                headers = {"Authorization": f"Bearer {xai_api_key}", "Content-Type": "application/json"}
+                payload = {"prompt": full_prompt, "model": "grok-2-image", "n": 1, "response_format": "b64_json"}
+                resp = requests.post("https://api.x.ai/v1/images/generations", json=payload, headers=headers, timeout=30)
+                if resp.status_code == 200:
+                    import base64
+                    b64 = resp.json()["data"][0]["b64_json"]
+                    with open(target_path, "wb") as f:
+                        f.write(base64.b64decode(b64))
+                    results.append({
+                        "imageId": img_id,
+                        "filename": filename,
+                        "url": f"/api/media/{filename}",
+                        "path": target_path,
+                        "source": "grok"
+                    })
+                    continue
+            except Exception as e:
+                print(f"[xAI Grok fallback]: {e}")
+                
+        # Free Instant Generative Engine: Pollinations.ai (Flux)
+        try:
+            encoded_prompt = urllib.parse.quote(full_prompt)
+            api_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true&seed={seed}"
+            resp = requests.get(api_url, timeout=30)
+            if resp.status_code == 200 and len(resp.content) > 1000:
+                with open(target_path, "wb") as f:
+                    f.write(resp.content)
+                results.append({
+                    "imageId": img_id,
+                    "filename": filename,
+                    "url": f"/api/media/{filename}",
+                    "path": target_path,
+                    "source": "pollinations_flux"
+                })
+        except Exception as e:
+            print(f"[AI Generation error]: {e}")
+            
+    if not results:
+        raise HTTPException(status_code=500, detail="Failed to generate AI images. Please check network connectivity or try again.")
+        
+    return {
+        "success": True,
+        "images": results,
+        "count": len(results),
+        "prompt": full_prompt
+    }
+
+@app.post("/api/media/personalize", summary="Personalize Greeting Card with Contact Name")
+async def personalize_greeting_card(req: PersonalizeCardRequest):
+    # 1. Resolve source image
+    source_path = req.file_path
+    if req.image_id and not source_path:
+        for f in os.listdir(UPLOADS_DIR):
+            if f.startswith(req.image_id):
+                source_path = os.path.join(UPLOADS_DIR, f)
+                break
+                
+    if not source_path or not os.path.exists(source_path):
+        raise HTTPException(status_code=400, detail="Valid base image must be provided.")
+        
+    # 2. Check if name is present and valid (not just digits/phone)
+    raw_name = (req.name or "").strip()
+    is_phone_digits = bool(re.match(r"^\+?[0-9\s\-]+$", raw_name)) or len(raw_name) == 0
+    
+    # If no valid name, return the source image untouched
+    if is_phone_digits:
+        safe_base = os.path.basename(source_path)
+        return {
+            "success": True,
+            "has_name": False,
+            "imageId": req.image_id or os.path.splitext(safe_base)[0],
+            "filename": safe_base,
+            "url": f"/api/media/{safe_base}",
+            "path": source_path,
+            "message": "Contact has no named identity; returning base card uncustomized."
+        }
+        
+    # 3. Contact has a valid name: dynamically render stylish text overlay with PIL
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        
+        base_img = Image.open(source_path).convert("RGBA")
+        w, h = base_img.size
+        
+        # Build text strings
+        suffix_str = f" {req.suffix.strip()}" if (req.suffix and req.suffix.strip() and req.suffix.lower() != "none") else ""
+        recipient_display = f"{raw_name}{suffix_str}"
+        greeting_line = req.greeting_text.strip() if req.greeting_text else "Greetings"
+        
+        # Load fonts (fallback gracefully to system serif/sans or default)
+        font_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "fonts")
+        script_font_path = os.path.join(font_dir, "GreatVibes-Regular.ttf")
+        sans_font_path = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+        
+        script_size = max(24, int(h * 0.065))
+        sans_size = max(18, int(h * 0.04))
+        
+        if os.path.exists(script_font_path):
+            font_script = ImageFont.truetype(script_font_path, script_size)
+        else:
+            font_script = ImageFont.load_default()
+            
+        if os.path.exists(sans_font_path):
+            font_sans = ImageFont.truetype(sans_font_path, sans_size)
+        else:
+            font_sans = ImageFont.load_default()
+            
+        overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        
+        # Frosted glass card plate at bottom
+        card_margin_x = int(w * 0.06)
+        card_h = int(h * 0.22)
+        card_y0 = h - card_h - int(h * 0.05)
+        card_y1 = h - int(h * 0.05)
+        
+        # Frosted rounded rectangle with subtle golden border
+        draw.rounded_rectangle(
+            (card_margin_x, card_y0, w - card_margin_x, card_y1),
+            radius=int(h * 0.025),
+            fill=(15, 23, 42, 215),
+            outline=(251, 191, 36, 230),
+            width=max(2, int(w * 0.003))
+        )
+        
+        # Draw Greeting Line (Golden Calligraphy)
+        center_x = w // 2
+        greet_y = card_y0 + int(card_h * 0.35)
+        draw.text((center_x + 2, greet_y + 2), greeting_line, fill=(0, 0, 0, 180), font=font_script, anchor="mm")
+        draw.text((center_x, greet_y), greeting_line, fill=(251, 191, 36, 255), font=font_script, anchor="mm")
+        
+        # Draw Recipient Name Line (Crisp bold sans text)
+        name_y = card_y0 + int(card_h * 0.72)
+        draw.text((center_x + 2, name_y + 2), recipient_display, fill=(0, 0, 0, 180), font=font_sans, anchor="mm")
+        draw.text((center_x, name_y), recipient_display, fill=(248, 250, 252, 255), font=font_sans, anchor="mm")
+        
+        # Composite and save
+        composite = Image.alpha_composite(base_img, overlay).convert("RGB")
+        
+        personalized_id = f"pers_{int(time.time()*1000)}_{os.urandom(3).hex()}"
+        out_filename = f"{personalized_id}.jpg"
+        out_path = os.path.join(UPLOADS_DIR, out_filename)
+        composite.save(out_path, format="JPEG", quality=95)
+        
+        return {
+            "success": True,
+            "has_name": True,
+            "imageId": personalized_id,
+            "filename": out_filename,
+            "url": f"/api/media/{out_filename}",
+            "path": out_path,
+            "recipient": recipient_display,
+            "greeting": greeting_line
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Personalization error: {e}")
+
+@app.get("/api/config/testing", summary="Get Testing & Sandbox Configuration")
+async def get_testing_config():
+    cfg = load_wabot_config()
+    return cfg.get("testing", {
+        "test_message": "Hello from WABot Test Workspace!",
+        "mode": cfg.get("engine", "wap"),
+        "delay_seconds": 1.5
+    })
+
+@app.post("/api/config/testing", summary="Update Testing & Sandbox Configuration")
+async def update_testing_config(req: TestingConfig):
+    cfg = load_wabot_config()
+    cfg["testing"] = req.dict()
+    if save_wabot_config(cfg):
+        return {"success": True, "testing": cfg["testing"]}
+    raise HTTPException(status_code=500, detail="Failed to save testing configuration.")
+
+@app.get("/api/contacts", summary="Get Searchable Contacts & Recent Chats")
+async def get_contacts(search: Optional[str] = Query(None)):
+    contacts = []
+    seen = set()
+    cfg = load_wabot_config()
+
+    # 1. From recent chats
+    try:
+        chats = await browser.get_chats(limit=40)
+        for c in chats:
+            name = c.get("name")
+            if name and name not in seen:
+                seen.add(name)
+                contacts.append({"name": name, "source": "chat", "unread": c.get("unreadCount", 0)})
+    except Exception:
+        pass
+
+    # 2. From call extraction targets
+    call_cfg = cfg.get("call_extraction", {})
+    for t in call_cfg.get("target_contacts", []):
+        if t and t not in seen:
+            seen.add(t)
+            contacts.append({"name": t, "source": "target"})
+
+    # 3. From user schedules
+    try:
+        schedules = load_wabot_schedules()
+        for s in schedules:
+            c_name = s.get("contact_name")
+            if c_name and c_name not in seen:
+                seen.add(c_name)
+                contacts.append({"name": c_name, "source": "schedule"})
+    except Exception:
+        pass
+
+    # 4. From call history
+    try:
+        calls = await browser.get_calls(limit=25)
+        for cl in calls:
+            c_name = cl.get("contactName") or cl.get("phoneNumber")
+            if c_name and c_name not in seen and c_name not in ["Favorites", "Add favorite", "Recent"]:
+                seen.add(c_name)
+                contacts.append({"name": c_name, "source": "call"})
+    except Exception:
+        pass
+
+    if search:
+        s_lower = search.lower().strip()
+        contacts = [c for c in contacts if s_lower in c["name"].lower()]
+
+    return contacts
 
 @app.get("/api/chats", summary="List Conversations")
 async def get_chats(limit: int = 20, unreadOnly: bool = False):

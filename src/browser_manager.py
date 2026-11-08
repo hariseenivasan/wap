@@ -406,6 +406,71 @@ class BrowserManager:
                 "timestamp": int(time.time()),
             }
 
+    async def send_image(self, target: str, file_path: str, caption: Optional[str] = None) -> Dict[str, Any]:
+        """Sends an image with optional caption and verifies dispatch."""
+        async with self.lock:
+            if await self.update_status_check() != "WORKING":
+                raise RuntimeError("WhatsApp Web session is not authenticated or not ready.")
+
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"Image file does not exist: {file_path}")
+
+            clean_target = target.replace("@c.us", "").replace("@s.whatsapp.net", "").replace("@g.us", "")
+            opened = await self.navigate_to_chat(clean_target)
+            if not opened:
+                raise ValueError(f"Could not open conversation for target: {target}")
+
+            # Locate file input
+            file_input = self.page.locator("input[type='file'][accept*='image']").first
+            if await file_input.count() == 0:
+                file_input = self.page.locator("input[type='file']").first
+
+            if await file_input.count() == 0:
+                attach_btn = self.page.locator("button[aria-label='Attach'], span[data-icon='plus'], span[data-icon='attach-menu-plus'], [data-icon='clip']").first
+                if await attach_btn.is_visible():
+                    await attach_btn.click()
+                    await asyncio.sleep(0.4)
+                file_input = self.page.locator("input[type='file']").first
+
+            if await file_input.count() == 0:
+                raise RuntimeError("Could not find file input element on WhatsApp Web.")
+
+            # Attach the image
+            await file_input.set_input_files(os.path.abspath(file_path))
+            await asyncio.sleep(1.5)
+
+            # Type caption if provided
+            if caption:
+                caption_selectors = [
+                    "div[contenteditable='true'][aria-label*='caption' i]",
+                    "div[contenteditable='true'][data-tab='10']",
+                    "div[contenteditable='true']"
+                ]
+                for c_sel in caption_selectors:
+                    c_loc = self.page.locator(c_sel).last
+                    if await c_loc.is_visible():
+                        await c_loc.click()
+                        await self.page.keyboard.type(caption, delay=15)
+                        await asyncio.sleep(0.3)
+                        break
+
+            # Send image
+            send_btn = self.page.locator("div[aria-label='Send'], span[data-icon='send'], div[role='button']:has([data-icon='send'])").last
+            if await send_btn.is_visible():
+                await send_btn.click()
+            else:
+                await self.page.keyboard.press("Enter")
+
+            await asyncio.sleep(2.0)
+            msg_id = f"wap_img_{int(time.time()*1000)}"
+            return {
+                "success": True,
+                "messageId": msg_id,
+                "chatId": target,
+                "caption": caption,
+                "timestamp": int(time.time()),
+            }
+
     async def get_chats(self, limit: int = 20, unread_only: bool = False) -> List[Dict[str, Any]]:
         """Lists recent conversations from the left sidebar."""
         async with self.lock:
@@ -426,7 +491,23 @@ class BrowserManager:
 
                 text = await row.inner_text()
                 lines = [line.strip() for line in text.split("\n") if line.strip()]
-                name = lines[0] if lines else "Unknown"
+
+                # Use span[title] which contains the exact contact or group name
+                title_el = row.locator("span[title]").first
+                if await title_el.count() > 0:
+                    name = (await title_el.get_attribute("title") or "").strip()
+                else:
+                    name = lines[0] if lines else "Unknown"
+
+                # Guard against unread badge strings
+                if not name or "unread message" in name.lower():
+                    for l in lines:
+                        if "unread message" not in l.lower() and len(l) > 1:
+                            name = l
+                            break
+
+                if not name or "unread message" in name.lower():
+                    continue
 
                 # Check unread badge
                 unread = 0
@@ -558,13 +639,19 @@ class BrowserManager:
                     continue
 
                 item_text = await item.inner_text()
-                lines = [l.strip() for l in item_text.split("\n") if l.strip()]
-                contact = lines[0] if lines else "Unknown"
+                lines = [l.strip() for l in item_text.split("\n") if l.strip() and l.strip() != "\xa0"]
+                if len(lines) < 2:
+                    continue
+
+                contact = lines[0]
+                # Skip non-call UI headers and actions
+                if contact in ["Favorites", "Add favorite", "Recent"]:
+                    continue
 
                 # Check pre-filter on contact name if specified
                 if clean_filters:
                     name_pre_match = any(cf in contact.lower() for cf in clean_filters)
-                    if not name_pre_match and not include_details:
+                    if not name_pre_match:
                         continue
 
                 # Detect Audio vs Video
@@ -573,66 +660,63 @@ class BrowserManager:
                 if call_type and ctype.lower() != call_type.lower():
                     continue
 
-                # Detect Direction: incoming, outgoing, or missed
-                is_missed = await item.locator("[data-icon*='missed'], [data-icon*='call-missed']").count() > 0
+                # Parse direction, call repetitions, and timestamp
+                direction = "incoming"
+                call_count = 1
+                timestamp = ""
+
+                for l in lines[1:]:
+                    l_lower = l.lower()
+                    if "missed" in l_lower:
+                        direction = "missed"
+                        m = re.search(r"\((\d+)\)", l)
+                        if m:
+                            call_count = int(m.group(1))
+                    elif "outgoing" in l_lower:
+                        direction = "outgoing"
+                        m = re.search(r"\((\d+)\)", l)
+                        if m:
+                            call_count = int(m.group(1))
+                    elif "incoming" in l_lower:
+                        direction = "incoming"
+                        m = re.search(r"\((\d+)\)", l)
+                        if m:
+                            call_count = int(m.group(1))
+                    else:
+                        timestamp = l
+
+                is_missed = (direction == "missed")
                 if missed_only and not is_missed:
                     continue
 
-                direction = "incoming"
+                # WhatsApp Web is a companion client: Missed calls have 0s duration;
+                # for answered calls, WhatsApp Web's companion protocol displays Who, When & Direction,
+                # but does not sync the internal talk-time call timer from the phone.
                 if is_missed:
-                    direction = "missed"
-                elif await item.locator("[data-icon*='outgoing'], [data-icon*='call-outgoing']").count() > 0:
-                    direction = "outgoing"
+                    status = "missed"
+                    duration = "0s (Missed)"
+                    duration_seconds = 0
+                else:
+                    status = "answered"
+                    duration = "Answered (Web)"
+                    duration_seconds = None
 
-                timestamp_preview = lines[-1] if len(lines) > 1 else ""
+                # Detect phone number if contact name is dialed digits
+                phone_number = contact if re.match(r"^\+?[0-9\s\-]+$", contact) else None
 
                 entry: Dict[str, Any] = {
                     "id": f"call_{i}_{int(time.time())}",
                     "contactName": contact,
-                    "phoneNumber": None,
+                    "phoneNumber": phone_number,
                     "type": ctype,
                     "direction": direction,
-                    "status": "missed" if is_missed else "answered",
+                    "callCount": call_count,
+                    "status": status,
                     "isMissed": is_missed,
-                    "duration": "0s" if is_missed else "Unknown",
-                    "durationSeconds": 0 if is_missed else None,
-                    "timestamp": timestamp_preview,
+                    "duration": duration,
+                    "durationSeconds": duration_seconds,
+                    "timestamp": timestamp,
                 }
-
-                # Click call item to open Call Info drawer if requested
-                if include_details:
-                    try:
-                        await item.click()
-                        await asyncio.sleep(0.8)
-                        drawer = self.page.locator("#main header, [data-testid='drawer-right']").first
-                        if await drawer.is_visible():
-                            drawer_text = await self.page.locator("#main").inner_text()
-                            
-                            # Extract phone number (e.g. +1 234 567 8900)
-                            phone_match = re.search(r"(\+?\d[\d\s\-]{7,16}\d)", drawer_text)
-                            if phone_match:
-                                entry["phoneNumber"] = phone_match.group(1).strip()
-
-                            # Extract duration (e.g. "4m 12s", "15 minutes 30 seconds")
-                            dur_match = re.search(r"(\d+\s*(?:m|min|minutes?)\s*\d*\s*(?:s|sec|seconds?)?|\d+\s*(?:s|sec|seconds?))", drawer_text, re.IGNORECASE)
-                            if dur_match:
-                                dur_str = dur_match.group(1).strip()
-                                entry["duration"] = dur_str
-                                
-                                # Convert to seconds
-                                mins = re.search(r"(\d+)\s*(?:m|min)", dur_str)
-                                secs = re.search(r"(\d+)\s*(?:s|sec)", dur_str)
-                                total_s = (int(mins.group(1)) * 60 if mins else 0) + (int(secs.group(1)) if secs else 0)
-                                entry["durationSeconds"] = total_s
-                    except Exception:
-                        pass
-
-                # If contact filter is active, verify post-drawer match
-                if clean_filters:
-                    name_match = any(cf in contact.lower() for cf in clean_filters)
-                    phone_match = any(cf in (entry.get("phoneNumber") or "").lower() for cf in clean_filters)
-                    if not name_match and not phone_match:
-                        continue
 
                 results.append(entry)
 

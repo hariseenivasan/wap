@@ -178,3 +178,104 @@ class TestDashboardAndSupervisorApi:
         assert "btn-log-stdout" in html
         assert "btn-log-stderr" in html
         assert "stderr-notice" in html
+
+    def test_testing_config_api(self):
+        """Verify GET /api/config/testing and POST /api/config/testing."""
+        r1 = requests.get(f"{BASE_URL}/api/config/testing")
+        assert r1.status_code == 200
+        orig = r1.json()
+
+        payload = {
+            "test_message": "Automated Sandbox Test Message",
+            "mode": "wap",
+            "default_recipient": "919876543210",
+            "delay_seconds": 1.5
+        }
+        r2 = requests.post(f"{BASE_URL}/api/config/testing", json=payload)
+        assert r2.status_code == 200
+        assert r2.json()["success"] is True
+
+        r3 = requests.get(f"{BASE_URL}/api/config/testing")
+        assert r3.status_code == 200
+        assert r3.json()["test_message"] == "Automated Sandbox Test Message"
+
+        # Restore
+        requests.post(f"{BASE_URL}/api/config/testing", json={
+            "test_message": orig.get("test_message", "Hello from WABot Test Workspace!"),
+            "mode": orig.get("mode", "wap"),
+            "default_recipient": orig.get("default_recipient", ""),
+            "delay_seconds": 1.5
+        })
+
+    def test_contacts_api(self):
+        """Verify GET /api/contacts returns contacts list."""
+        r = requests.get(f"{BASE_URL}/api/contacts")
+        assert r.status_code == 200
+        data = r.json()
+        assert isinstance(data, list)
+
+    def test_media_upload_and_personalize(self):
+        """Verify /api/media/upload, /api/media/{filename}, and /api/media/personalize."""
+        # 1. Upload dummy image
+        from PIL import Image
+        import io
+        buf = io.BytesIO()
+        img = Image.new("RGB", (300, 300), color=(30, 40, 60))
+        img.save(buf, format="JPEG")
+        buf.seek(0)
+
+        files = {"file": ("test_card.jpg", buf, "image/jpeg")}
+        r_up = requests.post(f"{BASE_URL}/api/media/upload", files=files)
+        assert r_up.status_code == 200
+        up_data = r_up.json()
+        assert up_data["success"] is True
+        img_id = up_data["imageId"]
+        img_url = up_data["url"]
+        img_path = up_data["path"]
+
+        # 2. Get media file
+        filename = up_data["filename"]
+        r_file = requests.get(f"{BASE_URL}{img_url}")
+        assert r_file.status_code == 200
+        assert len(r_file.content) > 100
+
+        # 3. Personalize with name
+        pers_payload = {
+            "image_id": img_id,
+            "name": "Alice Wonderland",
+            "suffix": "and Family",
+            "greeting_text": "Good Morning"
+        }
+        r_pers = requests.post(f"{BASE_URL}/api/media/personalize", json=pers_payload)
+        assert r_pers.status_code == 200
+        pers_data = r_pers.json()
+        assert pers_data["success"] is True
+        assert pers_data["has_name"] is True
+        assert "Alice Wonderland and Family" in pers_data["recipient"]
+
+        # 4. Personalize with phone digits only (fallback to base card)
+        phone_payload = {
+            "file_path": img_path,
+            "name": "+919876543210",
+            "suffix": "and Family",
+            "greeting_text": "Good Morning"
+        }
+        r_phone = requests.post(f"{BASE_URL}/api/media/personalize", json=phone_payload)
+        assert r_phone.status_code == 200
+        phone_data = r_phone.json()
+        assert phone_data["success"] is True
+        assert phone_data["has_name"] is False
+
+    def test_dashboard_elements_present(self):
+        """Verify Ad-Hoc, Greetings, and Randomizer UI components exist in dashboard HTML."""
+        r = requests.get(f"{BASE_URL}/dashboard")
+        assert r.status_code == 200
+        html = r.text
+        assert "action-switcher-bar" in html
+        assert "subview-adhoc" in html
+        assert "subview-greetings" in html
+        assert "btn-dispatch-broadcast" in html
+        assert "randomizeGreetingImages" in html
+        assert "chk-customize-per-name" in html
+        assert "testing-config-form" in html
+        assert "contacts-datalist" in html

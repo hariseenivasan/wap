@@ -32,6 +32,7 @@ env/
 # Local session storage & runtime files
 session/
 userdata/
+uploads/
 *.session
 *.log
 *.png

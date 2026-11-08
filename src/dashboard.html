@@ -381,6 +381,235 @@
       border-radius: 8px;
       background: #000;
     }
+
+    /* Action Switcher Bar */
+    .action-switcher-bar {
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(9, 13, 22, 0.7);
+      border: 1px solid var(--border-color);
+      padding: 0.4rem;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .action-switch-btn {
+      flex: 1;
+      min-width: 180px;
+      padding: 0.55rem 1rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 0;
+    }
+    .action-switch-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .action-switch-btn.active {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+    }
+
+    /* Chips Recipient Input */
+    .chips-input-container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+      background: #090d16;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.45rem 0.65rem;
+      min-height: 48px;
+      transition: border-color 0.2s;
+    }
+    .chips-input-container:focus-within {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+    .recipient-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #e0f2fe;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      animation: chipFadeIn 0.2s ease-out;
+    }
+    @keyframes chipFadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .recipient-chip .chip-del {
+      background: none;
+      border: none;
+      color: #93c5fd;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      line-height: 1;
+      border-radius: 50%;
+    }
+    .recipient-chip .chip-del:hover {
+      background: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+    .chips-input-field {
+      flex: 1;
+      min-width: 180px;
+      background: transparent !important;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      color: #fff !important;
+      padding: 0.25rem 0.4rem !important;
+      margin: 0 !important;
+      font-size: 0.88rem !important;
+    }
+
+    /* Image Gallery Grid */
+    .image-gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.85rem;
+      margin-top: 0.85rem;
+    }
+    .image-card {
+      position: relative;
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .image-card:hover {
+      border-color: #38bdf8;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      transform: translateY(-2px);
+    }
+    .image-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .image-card .img-del-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #f87171;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 0;
+      margin: 0;
+      line-height: 1;
+    }
+    .image-card .img-badge {
+      position: absolute;
+      bottom: 4px;
+      left: 4px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #38bdf8;
+      border-radius: 4px;
+      padding: 0.1rem 0.35rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+
+    /* AI Drawer */
+    .ai-drawer-box {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #c084fc;
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-top: 1rem;
+      box-shadow: 0 8px 24px rgba(192, 132, 252, 0.12);
+      animation: drawerSlide 0.25s ease-out;
+    }
+    @keyframes drawerSlide {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tag-pill {
+      display: inline-block;
+      padding: 0.25rem 0.65rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+      cursor: pointer;
+      margin: 0.2rem 0.2rem 0.2rem 0;
+      transition: all 0.15s ease;
+    }
+    .tag-pill:hover {
+      background: rgba(192, 132, 252, 0.2);
+      border-color: #c084fc;
+      color: #fff;
+    }
+
+    /* Distribution Matrix Grid */
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .matrix-item {
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: all 0.2s ease;
+    }
+    .matrix-item:hover {
+      border-color: rgba(56, 189, 248, 0.25);
+    }
+    .matrix-item img {
+      width: 52px;
+      height: 52px;
+      border-radius: 6px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
   </style>
 </head>
 <body>
@@ -418,7 +647,7 @@
       <button class="tab-btn" onclick="switchTab('wabot')">🤖 WABot Service & Logs</button>
       <button class="tab-btn" onclick="switchTab('schedules')">📅 Message Schedules</button>
       <button class="tab-btn" onclick="switchTab('config')">⚙️ Engine & Configuration</button>
-      <button class="tab-btn" onclick="switchTab('calls')">📞 Call Logs</button>
+      <button class="tab-btn" onclick="switchTab('calls')">📞 Calls &amp; Ad-Hoc Workspace</button>
       <button class="tab-btn" onclick="switchTab('login')">🔑 Session & Relogin</button>
     </nav>
 
@@ -640,80 +869,411 @@
             <button type="submit" style="padding:0.6rem 1.8rem; font-weight:700;">💾 Save Configuration</button>
           </div>
         </form>
+
+        <!-- AD-HOC & TESTING SANDBOX CONFIGURATION CARD -->
+        <div style="margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--border-color);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+            <div>
+              <h4 style="margin:0; color:#38bdf8; display:flex; align-items:center; gap:0.5rem;">
+                <span>🧪</span> <span>Ad-Hoc &amp; Testing Sandbox Configuration</span>
+              </h4>
+              <p style="color:var(--text-muted); font-size:0.85rem; margin:0.2rem 0 0 0;">
+                Configure default test message template, preferred testing engine mode, and recipient used across testing routines.
+              </p>
+            </div>
+          </div>
+
+          <form id="testing-config-form" onsubmit="event.preventDefault(); saveTestingConfig();" style="margin-top:1rem;">
+            <div class="grid" style="grid-template-columns: 1fr 2fr; gap:0.75rem; margin-bottom:1rem;">
+              <div>
+                <label for="cfg-testing-mode" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Testing Engine Mode</label>
+                <select id="cfg-testing-mode" style="margin:0;">
+                  <option value="wap">WAP (Playwright WYSIWYT)</option>
+                  <option value="waha">WAHA (WhatsApp HTTP API)</option>
+                </select>
+              </div>
+              <div>
+                <label for="cfg-testing-recipient" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Default Test Recipient (Phone / Name)</label>
+                <input type="text" id="cfg-testing-recipient" list="contacts-datalist" placeholder="e.g. 919876543210 or self" style="margin:0;">
+              </div>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+              <label for="cfg-testing-message" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Default Test Message Template</label>
+              <textarea id="cfg-testing-message" rows="2" style="margin:0; resize:vertical; font-family:inherit;" placeholder="Enter default test message..."></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+              <span id="testing-save-status" style="font-size:0.85rem; font-weight:600;"></span>
+              <button type="submit" style="padding:0.5rem 1.4rem; font-size:0.88rem; font-weight:700; background:#0284c7; border-color:#0284c7;">
+                💾 Save Testing Config
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </section>
 
-    <!-- TAB 4: CALL LOGS -->
+    <!-- TAB 4: CALL LOGS & AD-HOC WORKSPACE -->
     <section id="pane-calls" class="tab-pane">
       <div class="card-box">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
           <div>
-            <h3 style="margin:0;">Historical WhatsApp Call Logs</h3>
-            <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">
-              Extracted directly from the visual WhatsApp Calls drawer (Duration & exact dialed number).
+            <h3 style="margin:0;">📞 Call Logs &amp; Ad-Hoc Workspace</h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0.2rem 0 0 0;">
+              Extract visual call history, send ad-hoc test messages, or broadcast greetings with AI-generated cards and balanced image randomizer.
             </p>
           </div>
-          <div>
-            <button onclick="loadCallLogs()" class="secondary" style="padding:0.4rem 1rem; font-size:0.85rem;">🔄 Refresh Calls</button>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span class="badge" id="calls-active-engine-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);">
+              ENGINE: WAP
+            </span>
           </div>
         </div>
 
-        <!-- WAHA Warning when in WAHA mode -->
-        <div id="waha-call-warning" style="display:none; background:rgba(59, 130, 246, 0.15); border-left:4px solid #3b82f6; padding:1rem; border-radius:6px; margin-bottom:1.5rem;">
-          <h4 style="margin:0 0 0.5rem 0; color:#60a5fa;">ℹ️ Current Active Engine: WAHA</h4>
-          <p style="margin:0; font-size:0.9rem; line-height:1.5; color:#bfdbfe;">
-            WAHA operates on the multi-device companion WebSocket protocol, which does not sync historical call journals down from the primary phone.
-            <strong>To view and extract call logs with duration and dialed numbers, switch WABot engine mode to WAP in the Configuration tab.</strong>
-          </p>
-          <div style="margin-top:0.75rem;">
-            <button onclick="switchTab('config')" style="padding:0.35rem 0.9rem; font-size:0.8rem;">Switch to WAP Mode</button>
+        <!-- 3-Way Action Switcher Segmented Bar -->
+        <div class="action-switcher-bar">
+          <button id="btn-subview-calls" class="action-switch-btn active" onclick="switchCallsSubView('calls')">
+            <span>📞</span> <span>Extract Call Logs</span>
+          </button>
+          <button id="btn-subview-adhoc" class="action-switch-btn" onclick="switchCallsSubView('adhoc')">
+            <span>💬</span> <span>Send Ad-hoc Test Message</span>
+          </button>
+          <button id="btn-subview-greetings" class="action-switch-btn" onclick="switchCallsSubView('greetings')">
+            <span>🎁</span> <span>Send Greetings &amp; Broadcast</span>
+          </button>
+        </div>
+
+        <!-- SUBVIEW 1: CALL LOGS & EXTRACTION -->
+        <div id="subview-calls">
+          <!-- WAHA Warning when in WAHA mode -->
+          <div id="waha-call-warning" style="display:none; background:rgba(59, 130, 246, 0.15); border-left:4px solid #3b82f6; padding:1rem; border-radius:6px; margin-bottom:1.5rem;">
+            <h4 style="margin:0 0 0.5rem 0; color:#60a5fa;">ℹ️ Current Active Engine: WAHA</h4>
+            <p style="margin:0; font-size:0.9rem; line-height:1.5; color:#bfdbfe;">
+              WAHA operates on the multi-device companion WebSocket protocol, which does not sync historical call journals down from the primary phone.
+              <strong>To view and extract call logs with duration and dialed numbers, switch WABot engine mode to WAP in the Configuration tab.</strong>
+            </p>
+            <div style="margin-top:0.75rem;">
+              <button onclick="switchTab('config')" style="padding:0.35rem 0.9rem; font-size:0.8rem;">Switch to WAP Mode</button>
+            </div>
+          </div>
+
+          <!-- Target Contacts Call Extraction Filter Box -->
+          <div style="background:#090d16; border:1px solid var(--border-color); border-radius:8px; padding:1.25rem; margin-bottom:1.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+              <h4 style="margin:0; color:#38bdf8;">🎯 Target Contacts Call Extraction Config</h4>
+              <button onclick="loadCallLogs()" class="secondary" style="padding:0.3rem 0.85rem; font-size:0.8rem; margin:0;">🔄 Refresh Calls</button>
+            </div>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 1rem 0;">
+              Specify which contacts or phone numbers should have their call logs extracted in WAP mode. When target contacts are set, extraction focuses specifically on them for faster processing.
+            </p>
+            <div class="grid" style="grid-template-columns: 1fr 2fr 1fr; align-items:end; gap:0.75rem;">
+              <div>
+                <label for="call-filter-mode" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Extraction Mode</label>
+                <select id="call-filter-mode" style="margin:0;">
+                  <option value="all">Extract All Calls</option>
+                  <option value="whitelist">Whitelist Only</option>
+                </select>
+              </div>
+              <div>
+                <label for="call-target-contacts" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Target Contacts / Numbers (comma-separated)</label>
+                <input type="text" id="call-target-contacts" list="contacts-datalist" placeholder="e.g. Boss, Mom, 919876543210" style="margin:0;">
+              </div>
+              <div>
+                <button onclick="saveCallExtractionConfig()" style="width:100%; margin:0; padding:0.6rem 1rem;">💾 Save Targets</button>
+              </div>
+            </div>
+            <div id="call-extract-feedback" style="margin-top:0.5rem; font-size:0.85rem; font-weight:600;"></div>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table id="calls-table">
+              <thead>
+                <tr>
+                  <th>Contact / Name</th>
+                  <th>Dialed Phone Number</th>
+                  <th>Type</th>
+                  <th>Direction</th>
+                  <th>Status</th>
+                  <th>Call Duration</th>
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="calls-table-body">
+                <tr>
+                  <td colspan="8" style="text-align:center; color:var(--text-muted);">Loading call logs...</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Target Contacts Call Extraction Filter Box -->
-        <div style="background:#090d16; border:1px solid var(--border-color); border-radius:8px; padding:1.25rem; margin-bottom:1.5rem;">
-          <h4 style="margin:0 0 0.5rem 0; color:#38bdf8;">🎯 Target Contacts Call Extraction Config</h4>
-          <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 1rem 0;">
-            Specify which contacts or phone numbers should have their call logs extracted in WAP mode. When target contacts are set, extraction focuses specifically on them for faster processing.
-          </p>
-          <div class="grid" style="grid-template-columns: 1fr 2fr 1fr; align-items:end; gap:0.75rem;">
-            <div>
-              <label for="call-filter-mode" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Extraction Mode</label>
-              <select id="call-filter-mode" style="margin:0;">
-                <option value="all">Extract All Calls</option>
-                <option value="whitelist">Whitelist Only</option>
-              </select>
-            </div>
-            <div>
-              <label for="call-target-contacts" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Target Contacts / Numbers (comma-separated)</label>
-              <input type="text" id="call-target-contacts" placeholder="e.g. Boss, Mom, 919876543210" style="margin:0;">
-            </div>
-            <div>
-              <button onclick="saveCallExtractionConfig()" style="width:100%; margin:0; padding:0.6rem 1rem;">💾 Save Targets</button>
-            </div>
+        <!-- SUBVIEW 2: SEND AD-HOC TEST MESSAGE -->
+        <div id="subview-adhoc" style="display:none;">
+          <div style="background:#090d16; border:1px solid var(--border-color); border-radius:10px; padding:1.5rem; max-width:760px; margin:0 auto;">
+            <h4 style="margin:0 0 0.5rem 0; color:#38bdf8; display:flex; align-items:center; gap:0.5rem;">
+              <span>💬</span> <span>Ad-Hoc Direct Message Testing</span>
+            </h4>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 1.25rem 0;">
+              Dispatch an ad-hoc test message to verify connectivity and delivery through your active WhatsApp engine. Contact autocomplete supports WhatsApp chats, calls, or arbitrary phone numbers.
+            </p>
+
+            <form id="adhoc-form" onsubmit="event.preventDefault(); sendAdhocTestMessage();">
+              <div class="grid" style="grid-template-columns: 2fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                <div>
+                  <label for="adhoc-recipient" style="font-size:0.82rem; font-weight:600; color:#e2e8f0; margin-bottom:0.25rem; display:block;">
+                    👤 Recipient Contact Name or Phone Number <span style="color:#ef4444;">*</span>
+                  </label>
+                  <input type="text" id="adhoc-recipient" list="contacts-datalist" placeholder="Select from list or type number e.g. 919876543210" required style="margin:0;">
+                </div>
+                <div>
+                  <label for="adhoc-engine" style="font-size:0.82rem; font-weight:600; color:#e2e8f0; margin-bottom:0.25rem; display:block;">
+                    ⚡ Engine Dispatch Override
+                  </label>
+                  <select id="adhoc-engine" style="margin:0;">
+                    <option value="">Active Engine (Default)</option>
+                    <option value="wap">WAP (Playwright DOM)</option>
+                    <option value="waha">WAHA (HTTP API)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="margin-bottom:1.25rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                  <label for="adhoc-message" style="font-size:0.82rem; font-weight:600; color:#e2e8f0; margin:0;">
+                    💬 Message Text <span style="color:#ef4444;">*</span>
+                  </label>
+                  <button type="button" onclick="resetAdhocMessageToDefault()" class="secondary" style="background:transparent; border:none; color:#38bdf8; font-size:0.75rem; cursor:pointer; padding:0;">
+                    ↺ Reset to Default Config
+                  </button>
+                </div>
+                <textarea id="adhoc-message" rows="4" placeholder="Type test message here..." required style="margin:0; resize:vertical; font-family:inherit;"></textarea>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                <button type="button" onclick="saveCurrentAdhocAsDefault()" class="secondary" style="padding:0.5rem 1rem; font-size:0.85rem;">
+                  💾 Save as Default Test Message
+                </button>
+                <button type="submit" id="btn-adhoc-send" style="padding:0.6rem 1.8rem; font-weight:700; background:linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-color:#0284c7;">
+                  🚀 Send Test Message
+                </button>
+              </div>
+            </form>
+
+            <div id="adhoc-feedback" style="margin-top:1rem; font-size:0.9rem; font-weight:600; text-align:center;"></div>
           </div>
-          <div id="call-extract-feedback" style="margin-top:0.5rem; font-size:0.85rem; font-weight:600;"></div>
         </div>
 
-        <div style="overflow-x:auto;">
-          <table id="calls-table">
-            <thead>
-              <tr>
-                <th>Contact / Name</th>
-                <th>Dialed Phone Number</th>
-                <th>Type</th>
-                <th>Direction</th>
-                <th>Status</th>
-                <th>Call Duration</th>
-                <th>Timestamp</th>
-              </tr>
-            </thead>
-            <tbody id="calls-table-body">
-              <tr>
-                <td colspan="7" style="text-align:center; color:var(--text-muted);">Loading call logs...</td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- SUBVIEW 3: SEND GREETINGS & BROADCAST -->
+        <div id="subview-greetings" style="display:none;">
+          <div style="background:#090d16; border:1px solid var(--border-color); border-radius:10px; padding:1.5rem; max-width:860px; margin:0 auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+              <h4 style="margin:0; color:#38bdf8; display:flex; align-items:center; gap:0.5rem;">
+                <span>🎁</span> <span>Send Greetings &amp; Multi-Recipient Broadcast</span>
+              </h4>
+              <span id="greetings-stats-badge" class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);">
+                0 Recipients • 0 Images
+              </span>
+            </div>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 1.25rem 0;">
+              Compose festive greetings, attach or generate AI greeting cards, customize per contact name, and uniformly distribute images across contacts with the balanced randomizer. Bypasses WhatsApp broadcast limits via automated sequential dispatch.
+            </p>
+
+            <!-- 1. Recipient Chips Input (Email-Style) -->
+            <div style="margin-bottom:1.25rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.5rem;">
+                <label style="font-size:0.82rem; font-weight:700; color:#e2e8f0; margin:0; text-transform:uppercase; letter-spacing:0.04em;">
+                  👥 To: Recipients (<span id="recipient-chips-count">0</span>)
+                </label>
+                <div style="display:flex; gap:0.5rem; font-size:0.75rem;">
+                  <button type="button" onclick="addAllContactsToGreetings()" class="secondary" style="background:transparent; border:none; color:#38bdf8; cursor:pointer; padding:0;">
+                    + Add All from Calls
+                  </button>
+                  <span style="color:var(--text-muted);">|</span>
+                  <button type="button" onclick="clearAllGreetingRecipients()" class="secondary" style="background:transparent; border:none; color:#f87171; cursor:pointer; padding:0;">
+                    ✕ Clear All
+                  </button>
+                </div>
+              </div>
+
+              <div class="chips-input-container" id="greeting-chips-box" onclick="document.getElementById('greeting-chip-input').focus()">
+                <div id="greeting-chips-list" style="display:inline-flex; flex-wrap:wrap; gap:0.4rem;"></div>
+                <input type="text" id="greeting-chip-input" class="chips-input-field" list="contacts-datalist" placeholder="Type contact name or new phone number and hit Enter / Comma..." onkeydown="handleChipInputKeyDown(event)">
+              </div>
+              <small style="color:var(--text-muted); font-size:0.72rem; margin-top:0.3rem; display:block;">
+                💡 Press <strong>Enter</strong> or <strong>Comma (,)</strong> after typing to add as a recipient chip. Autocomplete populated from WhatsApp contacts.
+              </small>
+            </div>
+
+            <!-- 2. Greeting Message Textarea & Personalization -->
+            <div style="margin-bottom:1.25rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                <label for="greeting-message-text" style="font-size:0.82rem; font-weight:700; color:#e2e8f0; margin:0; text-transform:uppercase; letter-spacing:0.04em;">
+                  💬 Greeting Message Template
+                </label>
+                <span style="font-size:0.72rem; color:var(--text-muted);">Tip: Use <code>{name}</code> for dynamic insertion</span>
+              </div>
+              <textarea id="greeting-message-text" rows="2" placeholder="Good Morning {name}! Wishing you and your family joy and success! 🌟✨" style="margin:0 0 0.75rem 0; resize:vertical; font-family:inherit;"></textarea>
+
+              <!-- Per-Contact Customization Settings Box -->
+              <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.85rem 1rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                  <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem; font-weight:600; color:#f8fafc; margin:0;">
+                    <input type="checkbox" id="chk-customize-per-name" checked onchange="toggleNameCustomizationOptions(this.checked)" style="margin:0;">
+                    <span>✨ Customize per contact name on greeting text &amp; card</span>
+                  </label>
+                  <span style="font-size:0.75rem; color:#38bdf8; font-weight:600;">Fallback: Contacts without names receive clean generic greetings</span>
+                </div>
+
+                <div id="name-customization-options" class="grid" style="grid-template-columns: 1fr 1fr; gap:0.75rem; margin-top:0.75rem; align-items:end;">
+                  <div>
+                    <label for="sel-name-suffix" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem; display:block;">Contact Name Suffix / Honorific</label>
+                    <select id="sel-name-suffix" style="margin:0; font-size:0.82rem;">
+                      <option value="and Family" selected>&quot;and Family&quot; (e.g. John and Family)</option>
+                      <option value="&amp; Family">&quot;&amp; Family&quot; (e.g. John &amp; Family)</option>
+                      <option value="et al.">&quot;et al.&quot; (e.g. John et al.)</option>
+                      <option value="Ji">&quot;Ji&quot; (e.g. John Ji)</option>
+                      <option value="None">None (Just Contact Name)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="sel-card-style" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem; display:block;">Card Typography Overlay Style</label>
+                    <select id="sel-card-style" style="margin:0; font-size:0.82rem;">
+                      <option value="frosted_gold" selected>Frosted Glass Card with Golden Calligraphy</option>
+                      <option value="clean_modern">Clean Modern Badge</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Image Attachments & AI Magic -->
+            <div style="margin-bottom:1.5rem; background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1.1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
+                <label style="font-size:0.82rem; font-weight:700; color:#38bdf8; margin:0; text-transform:uppercase; letter-spacing:0.04em;">
+                  🖼️ Greeting Image Attachments (<span id="greeting-images-count">0</span>)
+                </label>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                  <input type="file" id="greeting-file-input" multiple accept="image/*" style="display:none;" onchange="handleGreetingImageUpload(this)">
+                  <button type="button" onclick="document.getElementById('greeting-file-input').click()" class="secondary" style="padding:0.35rem 0.8rem; font-size:0.8rem; border-radius:6px; background:#1e293b; color:#cbd5e1; border:1px solid rgba(255,255,255,0.15);">
+                    📁 Upload Images
+                  </button>
+                  <button type="button" onclick="toggleAiDrawer()" style="padding:0.35rem 0.9rem; font-size:0.8rem; border-radius:6px; font-weight:700; background:linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); border-color:#a855f7; color:#fff;">
+                    ✨ AI Magic Generator
+                  </button>
+                  <button type="button" onclick="clearAllGreetingImages()" class="secondary" style="padding:0.35rem 0.65rem; font-size:0.8rem; border-radius:6px; background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.25);">
+                    ✕ Clear
+                  </button>
+                </div>
+              </div>
+
+              <!-- Collapsible AI Magic Generator Drawer -->
+              <div id="ai-generator-drawer" class="ai-drawer-box" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                  <h5 style="margin:0; color:#c084fc; display:flex; align-items:center; gap:0.4rem;">
+                    <span>✨</span> <span>AI Magic Image Generator (Pollinations Flux / Grok)</span>
+                  </h5>
+                  <button type="button" onclick="toggleAiDrawer()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.1rem; padding:0;">✕</button>
+                </div>
+                <p style="color:var(--text-muted); font-size:0.8rem; margin:0 0 0.75rem 0;">
+                  Generate artistic greeting cards instantly with zero API keys required (powered by Flux on Pollinations.ai, with Grok xAI fallback). Specify language, festive theme, or trending tags below.
+                </p>
+
+                <div style="margin-bottom:0.75rem;">
+                  <label for="ai-prompt-tags" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Tags &amp; Keywords / Theme</label>
+                  <input type="text" id="ai-prompt-tags" placeholder="e.g. Diwali celebration, golden lamps, Tamil typography, festive aesthetic, vibrant colors" style="margin:0; font-size:0.85rem;">
+                </div>
+
+                <!-- Quick Tag Pills -->
+                <div style="margin-bottom:0.75rem;">
+                  <span style="font-size:0.72rem; color:var(--text-muted); margin-right:0.4rem;">Quick Tags:</span>
+                  <span class="tag-pill" onclick="appendAiTag('🪔 Diwali celebration, golden oil lamps, rangoli art')">🪔 Diwali</span>
+                  <span class="tag-pill" onclick="appendAiTag('🌾 Pongal harvest festival, sugarcane, pot of rice, Tamil traditional')">🌾 Pongal</span>
+                  <span class="tag-pill" onclick="appendAiTag('🌅 Good morning, serene sunrise, golden sunlight, blooming flowers')">🌅 Good Morning</span>
+                  <span class="tag-pill" onclick="appendAiTag('🎂 Happy Birthday celebration, balloons, cake, confetti')">🎂 Birthday</span>
+                  <span class="tag-pill" onclick="appendAiTag('🌺 Tamil typography, artistic traditional motifs, Kolam')">🌺 Tamil Art</span>
+                  <span class="tag-pill" onclick="appendAiTag('🎉 New Year fireworks, celebration, champagne, bokeh 4k')">🎉 New Year</span>
+                </div>
+
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap:0.75rem; align-items:end;">
+                  <div>
+                    <label for="ai-images-count" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">Number of Variations</label>
+                    <select id="ai-images-count" style="margin:0; font-size:0.85rem;">
+                      <option value="1">1 Image</option>
+                      <option value="2">2 Images</option>
+                      <option value="3" selected>3 Images</option>
+                      <option value="4">4 Images</option>
+                      <option value="5">5 Images</option>
+                    </select>
+                  </div>
+                  <div>
+                    <button type="button" id="btn-generate-ai" onclick="generateAiImages()" style="width:100%; margin:0; padding:0.5rem 1rem; font-weight:700; background:linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); border-color:#a855f7;">
+                      🎨 Generate Images
+                    </button>
+                  </div>
+                </div>
+                <div id="ai-generate-status" style="margin-top:0.5rem; font-size:0.8rem; font-weight:600; text-align:center;"></div>
+              </div>
+
+              <!-- Uploaded / Generated Images Gallery Grid -->
+              <div id="greeting-image-gallery" class="image-gallery-grid">
+                <!-- Image cards rendered here -->
+              </div>
+              <div id="no-images-placeholder" style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">
+                No images attached yet. Upload photos or use ✨ AI Magic Generator above.
+              </div>
+            </div>
+
+            <!-- 4. Balanced Image Randomizer & Shuffler -->
+            <div style="margin-bottom:1.5rem; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1.1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
+                <div>
+                  <h5 style="margin:0; color:#34d399; display:flex; align-items:center; gap:0.4rem;">
+                    <span>🎲</span> <span>Balanced Image Randomizer &amp; Shuffler</span>
+                  </h5>
+                  <p style="color:var(--text-muted); font-size:0.78rem; margin:0.2rem 0 0 0;">
+                    Equally distributes attached images across recipients (e.g. 5 images &amp; 10 contacts = 2 contacts per image, uniformly shuffled). No upper limit.
+                  </p>
+                </div>
+                <div>
+                  <button type="button" onclick="randomizeGreetingImages()" style="padding:0.45rem 1.1rem; font-size:0.82rem; font-weight:700; background:linear-gradient(135deg, #10b981 0%, #059669 100%); border-color:#10b981;">
+                    🎲 Shuffle &amp; Distribute
+                  </button>
+                </div>
+              </div>
+
+              <!-- Visual Distribution Matrix Grid -->
+              <div id="distribution-matrix-container" style="display:none; margin-top:0.75rem;">
+                <div style="font-size:0.75rem; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.4rem;">
+                  Assigned Image &amp; Personalization Distribution Matrix:
+                </div>
+                <div id="distribution-matrix-grid" class="matrix-grid">
+                  <!-- Matrix cards rendered here -->
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Broadcast Dispatch Controls -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+              <div style="font-size:0.8rem; color:var(--text-muted);">
+                ⚡ Anti-ban safe interval: 1.5s between dispatches
+              </div>
+              <button type="button" id="btn-dispatch-broadcast" onclick="dispatchGreetingsBroadcast()" style="padding:0.65rem 2rem; font-weight:800; font-size:0.95rem; background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-color:#f59e0b; color:#fff;">
+                🚀 Dispatch Greetings Broadcast
+              </button>
+            </div>
+
+            <!-- Broadcast Progress Bar & Log -->
+            <div id="broadcast-progress-box" style="display:none; margin-top:1.25rem; background:#05070d; border:1px solid var(--border-color); border-radius:8px; padding:1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                <span id="broadcast-progress-label" style="font-size:0.85rem; font-weight:700; color:#38bdf8;">Broadcasting...</span>
+                <span id="broadcast-progress-count" style="font-size:0.8rem; color:var(--text-muted);">0 / 0</span>
+              </div>
+              <progress id="broadcast-progress-bar" value="0" max="100" style="margin:0 0 0.75rem 0;"></progress>
+              <div id="broadcast-log-console" style="max-height:140px; overflow-y:auto; font-family:'Courier New', monospace; font-size:0.78rem; line-height:1.4; color:#cbd5e1; background:#090d16; padding:0.6rem; border-radius:6px;"></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -780,6 +1340,9 @@
         </div>
       </div>
     </section>
+
+    <!-- Global Autocomplete Datalist for Contacts & Phone Numbers -->
+    <datalist id="contacts-datalist"></datalist>
   </main>
 
   <!-- DOUBLE CONFIRMATION MODAL -->
@@ -1253,10 +1816,13 @@
             <td><strong>${escapeHtml(c.contactName || c.phoneNumber || 'Unknown')}</strong></td>
             <td><code style="color:#38bdf8;">${escapeHtml(c.phoneNumber || '-')}</code></td>
             <td><span class="badge-tag ${c.type === 'video' ? 'tag-video' : 'tag-audio'}">${escapeHtml(c.type || 'audio')}</span></td>
-            <td><span style="text-transform:capitalize;">${escapeHtml(c.direction || 'incoming')}</span></td>
+            <td><span style="text-transform:capitalize;">${escapeHtml(c.direction || 'incoming')}${c.callCount && c.callCount > 1 ? ` (${c.callCount})` : ''}</span></td>
             <td><span class="badge-tag ${c.isMissed ? 'tag-missed' : 'tag-answered'}">${escapeHtml(c.status || (c.isMissed ? 'missed' : 'answered'))}</span></td>
-            <td><strong>${escapeHtml(c.duration || '0s')}</strong></td>
+            <td><strong>${escapeHtml(c.duration || (c.isMissed ? '0s' : 'Answered'))}</strong></td>
             <td style="color:var(--text-muted); font-size:0.85rem;">${escapeHtml(c.timestamp || '-')}</td>
+            <td>
+              <button onclick="quickTextContact('${escapeAttr(c.phoneNumber || c.contactName)}')" class="secondary" style="padding:0.2rem 0.55rem; font-size:0.75rem; border-radius:4px; margin:0;">💬 Text</button>
+            </td>
           </tr>
         `).join('');
       } catch (e) {
@@ -1797,6 +2363,627 @@
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    // === CALLS & AD-HOC WORKSPACE STATE & FUNCTIONS ===
+    let currentCallsSubView = 'calls';
+    let allKnownContacts = [];
+    let selectedGreetingRecipients = [];
+    let greetingImages = []; // [{ imageId, filename, url, path, isAi }]
+    let assignedDistributionMatrix = []; // [{ recipient, image, personalizedCardUrl, personalizedPath, finalCaption }]
+    let cachedTestingConfig = null;
+
+    function switchCallsSubView(view) {
+      currentCallsSubView = view;
+      ['calls', 'adhoc', 'greetings'].forEach(v => {
+        const btn = document.getElementById(`btn-subview-${v}`);
+        const pane = document.getElementById(`subview-${v}`);
+        if (btn) btn.classList.toggle('active', v === view);
+        if (pane) pane.style.display = (v === view) ? 'block' : 'none';
+      });
+
+      if (view === 'calls') {
+        loadCallLogs();
+      } else if (view === 'adhoc') {
+        const msgBox = document.getElementById('adhoc-message');
+        if (!msgBox.value && cachedTestingConfig && cachedTestingConfig.test_message) {
+          msgBox.value = cachedTestingConfig.test_message;
+        }
+      } else if (view === 'greetings') {
+        renderRecipientChips();
+        renderGreetingImageGallery();
+      }
+    }
+
+    function quickTextContact(target) {
+      switchTab('calls');
+      switchCallsSubView('adhoc');
+      const recInput = document.getElementById('adhoc-recipient');
+      if (recInput) recInput.value = target || '';
+      const msgInput = document.getElementById('adhoc-message');
+      if (msgInput) msgInput.focus();
+    }
+
+    async function loadContacts() {
+      try {
+        const res = await fetch('/api/contacts');
+        if (!res.ok) return;
+        const data = await res.json();
+        allKnownContacts = data.contacts || [];
+        const dl = document.getElementById('contacts-datalist');
+        if (dl) {
+          dl.innerHTML = allKnownContacts.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.source || '')}</option>`).join('');
+        }
+      } catch (err) {
+        console.warn("Failed to load contacts:", err);
+      }
+    }
+
+    async function loadTestingConfig() {
+      try {
+        const res = await fetch('/api/config/testing');
+        if (!res.ok) return;
+        const cfg = await res.json();
+        cachedTestingConfig = cfg;
+        const modeEl = document.getElementById('cfg-testing-mode');
+        const recEl = document.getElementById('cfg-testing-recipient');
+        const msgEl = document.getElementById('cfg-testing-message');
+        if (modeEl) modeEl.value = cfg.mode || 'wap';
+        if (recEl) recEl.value = cfg.default_recipient || '';
+        if (msgEl) msgEl.value = cfg.test_message || 'Hello from WABot Test Workspace!';
+
+        const adhocRec = document.getElementById('adhoc-recipient');
+        const adhocMsg = document.getElementById('adhoc-message');
+        if (adhocRec && !adhocRec.value && cfg.default_recipient) {
+          adhocRec.value = cfg.default_recipient;
+        }
+        if (adhocMsg && !adhocMsg.value && cfg.test_message) {
+          adhocMsg.value = cfg.test_message;
+        }
+      } catch (err) {
+        console.warn("Failed to load testing config:", err);
+      }
+    }
+
+    async function saveTestingConfig() {
+      const statusSpan = document.getElementById('testing-save-status');
+      statusSpan.style.color = '#38bdf8';
+      statusSpan.textContent = 'Saving testing config...';
+      try {
+        const payload = {
+          mode: document.getElementById('cfg-testing-mode').value,
+          default_recipient: document.getElementById('cfg-testing-recipient').value.trim(),
+          test_message: document.getElementById('cfg-testing-message').value.trim(),
+          delay_seconds: 1.5
+        };
+        const res = await fetch('/api/config/testing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          cachedTestingConfig = payload;
+          statusSpan.style.color = '#34d399';
+          statusSpan.textContent = '✅ Testing configuration saved!';
+          setTimeout(() => { statusSpan.textContent = ''; }, 3000);
+        } else {
+          statusSpan.style.color = '#ef4444';
+          statusSpan.textContent = `❌ ${data.detail || data.error || 'Failed to save'}`;
+        }
+      } catch (err) {
+        statusSpan.style.color = '#ef4444';
+        statusSpan.textContent = `❌ Error: ${err.message}`;
+      }
+    }
+
+    async function sendAdhocTestMessage() {
+      const recipient = document.getElementById('adhoc-recipient').value.trim();
+      const text = document.getElementById('adhoc-message').value.trim();
+      const engineOverride = document.getElementById('adhoc-engine').value;
+      const feedback = document.getElementById('adhoc-feedback');
+      const sendBtn = document.getElementById('btn-adhoc-send');
+
+      if (!recipient) {
+        feedback.style.color = '#ef4444';
+        feedback.textContent = 'Please enter a recipient contact name or phone number.';
+        return;
+      }
+      if (!text) {
+        feedback.style.color = '#ef4444';
+        feedback.textContent = 'Please enter a message to send.';
+        return;
+      }
+
+      const activeEng = engineOverride || activeEngine;
+      sendBtn.disabled = true;
+      sendBtn.textContent = `⏳ Sending via ${activeEng.toUpperCase()}...`;
+      feedback.style.color = '#38bdf8';
+      feedback.textContent = `Dispatching test message to ${recipient}...`;
+
+      try {
+        const res = await fetch('/api/sendText', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chatId: recipient,
+            text: text,
+            engine: engineOverride || undefined
+          })
+        });
+        const data = await res.json();
+        sendBtn.disabled = false;
+        sendBtn.textContent = '🚀 Send Test Message';
+
+        if (res.ok && (data.success !== false)) {
+          feedback.style.color = '#34d399';
+          feedback.textContent = `✅ Test message delivered! Message ID: ${data.messageId || data.id || 'dispatched'}`;
+        } else {
+          feedback.style.color = '#ef4444';
+          feedback.textContent = `❌ Failed: ${data.error || data.detail || 'Dispatch failed'}`;
+        }
+      } catch (err) {
+        sendBtn.disabled = false;
+        sendBtn.textContent = '🚀 Send Test Message';
+        feedback.style.color = '#ef4444';
+        feedback.textContent = `❌ Request error: ${err.message}`;
+      }
+    }
+
+    async function saveCurrentAdhocAsDefault() {
+      const recipient = document.getElementById('adhoc-recipient').value.trim();
+      const text = document.getElementById('adhoc-message').value.trim();
+      if (!text) {
+        alert("Please enter a message text before saving as default.");
+        return;
+      }
+      document.getElementById('cfg-testing-recipient').value = recipient;
+      document.getElementById('cfg-testing-message').value = text;
+      await saveTestingConfig();
+      const feedback = document.getElementById('adhoc-feedback');
+      feedback.style.color = '#34d399';
+      feedback.textContent = '✅ Saved as default test template!';
+      setTimeout(() => { feedback.textContent = ''; }, 3000);
+    }
+
+    function resetAdhocMessageToDefault() {
+      if (cachedTestingConfig && cachedTestingConfig.test_message) {
+        document.getElementById('adhoc-message').value = cachedTestingConfig.test_message;
+      }
+    }
+
+    // === GREETINGS & BROADCAST RECIPIENTS ===
+    function handleChipInputKeyDown(e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const input = document.getElementById('greeting-chip-input');
+        const val = input.value.trim().replace(/^,+|,+$/g, '');
+        if (val) {
+          addRecipientChip(val);
+          input.value = '';
+        }
+      }
+    }
+
+    function addRecipientChip(val) {
+      const clean = val.trim();
+      if (!clean) return;
+      if (!selectedGreetingRecipients.includes(clean)) {
+        selectedGreetingRecipients.push(clean);
+        renderRecipientChips();
+      }
+    }
+
+    function removeRecipientChip(idx) {
+      if (idx >= 0 && idx < selectedGreetingRecipients.length) {
+        selectedGreetingRecipients.splice(idx, 1);
+        renderRecipientChips();
+      }
+    }
+
+    function addAllContactsToGreetings() {
+      if (allKnownContacts.length === 0) {
+        loadContacts().then(() => {
+          allKnownContacts.forEach(c => {
+            if (c.name && !selectedGreetingRecipients.includes(c.name)) {
+              selectedGreetingRecipients.push(c.name);
+            }
+          });
+          renderRecipientChips();
+        });
+      } else {
+        allKnownContacts.forEach(c => {
+          if (c.name && !selectedGreetingRecipients.includes(c.name)) {
+            selectedGreetingRecipients.push(c.name);
+          }
+        });
+        renderRecipientChips();
+      }
+    }
+
+    function clearAllGreetingRecipients() {
+      selectedGreetingRecipients = [];
+      renderRecipientChips();
+      assignedDistributionMatrix = [];
+      document.getElementById('distribution-matrix-container').style.display = 'none';
+    }
+
+    function renderRecipientChips() {
+      const container = document.getElementById('greeting-chips-list');
+      const countSpan = document.getElementById('recipient-chips-count');
+      const statsBadge = document.getElementById('greetings-stats-badge');
+      if (countSpan) countSpan.textContent = selectedGreetingRecipients.length;
+      if (statsBadge) statsBadge.textContent = `${selectedGreetingRecipients.length} Recipients • ${greetingImages.length} Images`;
+
+      if (!container) return;
+      container.innerHTML = selectedGreetingRecipients.map((r, i) => {
+        const isPhone = /^\+?[0-9\s\-]+$/.test(r);
+        const icon = isPhone ? '📞' : '👤';
+        return `
+          <span class="recipient-chip">
+            <span>${icon} ${escapeHtml(r)}</span>
+            <button type="button" class="chip-del" onclick="removeRecipientChip(${i})" title="Remove">✕</button>
+          </span>
+        `;
+      }).join('');
+    }
+
+    function toggleNameCustomizationOptions(checked) {
+      const box = document.getElementById('name-customization-options');
+      if (box) box.style.display = checked ? 'grid' : 'none';
+    }
+
+    // === GREETINGS MEDIA & AI GENERATION ===
+    async function handleGreetingImageUpload(input) {
+      if (!input.files || input.files.length === 0) return;
+      const count = input.files.length;
+      for (let i = 0; i < count; i++) {
+        const file = input.files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await fetch('/api/media/upload', {
+            method: 'POST',
+            body: formData
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            greetingImages.push({
+              imageId: data.imageId,
+              filename: data.filename,
+              url: data.url,
+              path: data.path,
+              isAi: false
+            });
+          }
+        } catch (err) {
+          console.warn("Upload failed:", err);
+        }
+      }
+      input.value = '';
+      renderGreetingImageGallery();
+    }
+
+    function toggleAiDrawer() {
+      const drawer = document.getElementById('ai-generator-drawer');
+      if (drawer) {
+        drawer.style.display = (drawer.style.display === 'none' || !drawer.style.display) ? 'block' : 'none';
+      }
+    }
+
+    function appendAiTag(tag) {
+      const input = document.getElementById('ai-prompt-tags');
+      if (!input) return;
+      if (input.value.trim()) {
+        input.value = `${input.value.trim()}, ${tag}`;
+      } else {
+        input.value = tag;
+      }
+    }
+
+    async function generateAiImages() {
+      const tags = document.getElementById('ai-prompt-tags').value.trim();
+      const count = parseInt(document.getElementById('ai-images-count').value, 10) || 3;
+      const status = document.getElementById('ai-generate-status');
+      const btn = document.getElementById('btn-generate-ai');
+
+      btn.disabled = true;
+      btn.textContent = '✨ Generating AI Artwork...';
+      status.style.color = '#c084fc';
+      status.textContent = 'Calling AI generation engine (Pollinations Flux / Grok)...';
+
+      try {
+        const res = await fetch('/api/media/ai-generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: document.getElementById('greeting-message-text').value.trim() || 'Festive greetings celebration',
+            tags: tags,
+            count: count
+          })
+        });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.textContent = '🎨 Generate Images';
+
+        if (res.ok && data.success && data.images) {
+          data.images.forEach(img => {
+            greetingImages.push({
+              imageId: img.imageId,
+              filename: img.filename,
+              url: img.url,
+              path: img.path,
+              isAi: true
+            });
+          });
+          status.style.color = '#34d399';
+          status.textContent = `✅ Successfully generated ${data.images.length} AI images!`;
+          renderGreetingImageGallery();
+          setTimeout(() => { toggleAiDrawer(); status.textContent = ''; }, 1200);
+        } else {
+          status.style.color = '#ef4444';
+          status.textContent = `❌ ${data.detail || data.error || 'Generation failed'}`;
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '🎨 Generate Images';
+        status.style.color = '#ef4444';
+        status.textContent = `❌ Network error: ${err.message}`;
+      }
+    }
+
+    function removeGreetingImage(idx) {
+      if (idx >= 0 && idx < greetingImages.length) {
+        greetingImages.splice(idx, 1);
+        renderGreetingImageGallery();
+      }
+    }
+
+    function clearAllGreetingImages() {
+      greetingImages = [];
+      renderGreetingImageGallery();
+      assignedDistributionMatrix = [];
+      document.getElementById('distribution-matrix-container').style.display = 'none';
+    }
+
+    function renderGreetingImageGallery() {
+      const gallery = document.getElementById('greeting-image-gallery');
+      const placeholder = document.getElementById('no-images-placeholder');
+      const countSpan = document.getElementById('greeting-images-count');
+      const statsBadge = document.getElementById('greetings-stats-badge');
+
+      if (countSpan) countSpan.textContent = greetingImages.length;
+      if (statsBadge) statsBadge.textContent = `${selectedGreetingRecipients.length} Recipients • ${greetingImages.length} Images`;
+
+      if (!gallery) return;
+      if (greetingImages.length === 0) {
+        gallery.innerHTML = '';
+        if (placeholder) placeholder.style.display = 'block';
+        return;
+      }
+
+      if (placeholder) placeholder.style.display = 'none';
+      gallery.innerHTML = greetingImages.map((img, i) => `
+        <div class="image-card">
+          <img src="${escapeAttr(img.url)}" alt="Card #${i+1}">
+          <button type="button" class="img-del-btn" onclick="removeGreetingImage(${i})" title="Remove image">✕</button>
+          <span class="img-badge">#${i+1}${img.isAi ? ' ✨' : ''}</span>
+        </div>
+      `).join('');
+    }
+
+    // === BALANCED IMAGE RANDOMIZER & SHUFFLER ===
+    function randomizeGreetingImages() {
+      const M = selectedGreetingRecipients.length;
+      const N = greetingImages.length;
+
+      if (M === 0) {
+        alert("Please add at least one recipient to distribute images across.");
+        return;
+      }
+      if (N === 0) {
+        alert("Please attach or generate at least one image before shuffling.");
+        return;
+      }
+
+      // Balanced Distribution Algorithm:
+      // Evenly distribute N images across M contacts (e.g. 5 images & 10 contacts -> exactly 2 per image)
+      const assignments = [];
+      for (let i = 0; i < M; i++) {
+        assignments.push(i % N);
+      }
+
+      // Fisher-Yates uniform shuffle
+      for (let i = assignments.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [assignments[i], assignments[j]] = [assignments[j], assignments[i]];
+      }
+
+      const rawTemplate = document.getElementById('greeting-message-text').value.trim() || 'Good Morning!';
+      const customizePerName = document.getElementById('chk-customize-per-name').checked;
+      const suffix = document.getElementById('sel-name-suffix').value;
+
+      assignedDistributionMatrix = selectedGreetingRecipients.map((rec, i) => {
+        const imgIdx = assignments[i];
+        const assignedImg = greetingImages[imgIdx];
+        const isPhoneOnly = /^\+?[0-9\s\-]+$/.test(rec);
+        const hasName = !isPhoneOnly && rec.length > 0;
+
+        let finalCaption = rawTemplate;
+        let displayName = rec;
+
+        if (customizePerName && hasName) {
+          const suffixStr = (suffix && suffix.toLowerCase() !== 'none') ? ` ${suffix}` : '';
+          displayName = `${rec}${suffixStr}`;
+          if (finalCaption.includes('{name}')) {
+            finalCaption = finalCaption.replace(/\{name\}/g, displayName);
+          } else {
+            finalCaption = `${finalCaption} - Dear ${displayName}`;
+          }
+        } else {
+          finalCaption = finalCaption.replace(/\{name\}/g, '').replace(/\s+/g, ' ').trim();
+        }
+
+        return {
+          recipient: rec,
+          displayName: displayName,
+          hasName: hasName,
+          imageIndex: imgIdx + 1,
+          image: assignedImg,
+          finalCaption: finalCaption
+        };
+      });
+
+      renderDistributionMatrix();
+    }
+
+    function renderDistributionMatrix() {
+      const container = document.getElementById('distribution-matrix-container');
+      const grid = document.getElementById('distribution-matrix-grid');
+      if (!container || !grid) return;
+
+      if (assignedDistributionMatrix.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'block';
+      grid.innerHTML = assignedDistributionMatrix.map((item, idx) => `
+        <div class="matrix-item">
+          <img src="${escapeAttr(item.image.url)}" alt="Card #${item.imageIndex}">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:0.85rem; font-weight:700; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              ${escapeHtml(item.displayName)}
+            </div>
+            <div style="font-size:0.75rem; color:#38bdf8;">
+              Assigned Card #${item.imageIndex} ${item.hasName ? '✨ (Personalized)' : '📄 (Generic)'}
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              &quot;${escapeHtml(item.finalCaption)}&quot;
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // === BATCH SEQUENTIAL BROADCAST DISPATCHER ===
+    async function dispatchGreetingsBroadcast() {
+      if (selectedGreetingRecipients.length === 0) {
+        alert("Please add at least one recipient.");
+        return;
+      }
+
+      if (assignedDistributionMatrix.length === 0) {
+        randomizeGreetingImages();
+      }
+
+      const total = assignedDistributionMatrix.length;
+      if (!confirm(`Are you ready to dispatch greetings to ${total} recipient${total === 1 ? '' : 's'} via active engine ${activeEngine.toUpperCase()}?`)) {
+        return;
+      }
+
+      const progressBox = document.getElementById('broadcast-progress-box');
+      const progressBar = document.getElementById('broadcast-progress-bar');
+      const progressLabel = document.getElementById('broadcast-progress-label');
+      const progressCount = document.getElementById('broadcast-progress-count');
+      const logConsole = document.getElementById('broadcast-log-console');
+      const dispatchBtn = document.getElementById('btn-dispatch-broadcast');
+
+      progressBox.style.display = 'block';
+      progressBar.value = 0;
+      progressBar.max = total;
+      logConsole.innerHTML = `[${new Date().toLocaleTimeString()}] Starting sequential broadcast to ${total} recipients...\n`;
+      dispatchBtn.disabled = true;
+
+      const customizePerName = document.getElementById('chk-customize-per-name').checked;
+      const suffix = document.getElementById('sel-name-suffix').value;
+      const rawGreetText = document.getElementById('greeting-message-text').value.trim() || 'Good Morning!';
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (let i = 0; i < total; i++) {
+        const item = assignedDistributionMatrix[i];
+        progressLabel.textContent = `Dispatching to ${item.recipient} (${i + 1}/${total})...`;
+        progressCount.textContent = `${i + 1} / ${total}`;
+        progressBar.value = i + 1;
+
+        let targetImagePath = item.image ? item.image.path : null;
+
+        // Step A: If name customization is requested and contact has a name, dynamically personalize card!
+        if (customizePerName && item.hasName && item.image) {
+          try {
+            const persRes = await fetch('/api/media/personalize', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                image_id: item.image.imageId,
+                file_path: item.image.path,
+                name: item.recipient,
+                suffix: suffix,
+                greeting_text: rawGreetText.replace(/\{name\}/g, '').trim() || 'Good Morning'
+              })
+            });
+            const persData = await persRes.json();
+            if (persRes.ok && persData.success && persData.path) {
+              targetImagePath = persData.path;
+              logConsole.innerHTML += `  🎨 Created personalized card for "${item.displayName}"\n`;
+            }
+          } catch (e) {
+            console.warn("Personalize card fallback:", e);
+          }
+        }
+
+        // Step B: Send image or text
+        try {
+          let res;
+          if (targetImagePath) {
+            res = await fetch('/api/sendImage', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chatId: item.recipient,
+                file_path: targetImagePath,
+                caption: item.finalCaption,
+                engine: activeEngine
+              })
+            });
+          } else {
+            res = await fetch('/api/sendText', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chatId: item.recipient,
+                text: item.finalCaption,
+                engine: activeEngine
+              })
+            });
+          }
+
+          const resData = await res.json();
+          if (res.ok && resData.success !== false) {
+            successCount++;
+            logConsole.innerHTML += `  ✅ [${i + 1}/${total}] Delivered to ${item.recipient} (${resData.messageId || 'OK'})\n`;
+          } else {
+            failCount++;
+            logConsole.innerHTML += `  ❌ [${i + 1}/${total}] Error for ${item.recipient}: ${resData.error || resData.detail || 'Dispatch failed'}\n`;
+          }
+        } catch (err) {
+          failCount++;
+          logConsole.innerHTML += `  ❌ [${i + 1}/${total}] Network error for ${item.recipient}: ${err.message}\n`;
+        }
+
+        logConsole.scrollTop = logConsole.scrollHeight;
+
+        // Anti-ban delay between dispatches (1.5s)
+        if (i < total - 1) {
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
+
+      progressLabel.textContent = `Broadcast Complete: ${successCount} Sent, ${failCount} Failed`;
+      logConsole.innerHTML += `\n[${new Date().toLocaleTimeString()}] ✅ Completed: ${successCount} successful, ${failCount} errors.\n`;
+      dispatchBtn.disabled = false;
+    }
+
     // Init
     loadConfigData();
     loadStatus();
@@ -1804,6 +2991,8 @@
     loadWabotLogs();
     loadSchedules();
     loadCallExtractionConfig();
+    loadContacts();
+    loadTestingConfig();
     setInterval(loadStatus, 5000);
     setInterval(loadWabotStatus, 5000);
     setInterval(() => {
