@@ -266,8 +266,23 @@ class TestDashboardAndSupervisorApi:
         assert phone_data["success"] is True
         assert phone_data["has_name"] is False
 
+        # 5. Personalize with blank/empty greeting text (image-only / optional text mode)
+        blank_text_payload = {
+            "file_path": img_path,
+            "name": "Bob Smith",
+            "suffix": "& Family",
+            "greeting_text": ""
+        }
+        r_blank = requests.post(f"{BASE_URL}/api/media/personalize", json=blank_text_payload)
+        assert r_blank.status_code == 200
+        blank_data = r_blank.json()
+        assert blank_data["success"] is True
+        assert blank_data["has_name"] is True
+        assert blank_data["greeting"] == ""
+        assert "Bob Smith & Family" in blank_data["recipient"]
+
     def test_dashboard_elements_present(self):
-        """Verify Ad-Hoc, Greetings, and Randomizer UI components exist in dashboard HTML."""
+        """Verify Ad-Hoc, Greetings, Randomizer, and Disruption UI components exist in dashboard HTML."""
         r = requests.get(f"{BASE_URL}/dashboard")
         assert r.status_code == 200
         html = r.text
@@ -275,6 +290,14 @@ class TestDashboardAndSupervisorApi:
         assert "subview-adhoc" in html
         assert "subview-greetings" in html
         assert "btn-dispatch-broadcast" in html
+        assert "btn-pause-broadcast" in html
+        assert "btn-abort-broadcast" in html
+        assert "btn-retry-broadcast" in html
+        assert "broadcast-status-badge" in html
+        assert "togglePauseBroadcast" in html
+        assert "abortBroadcast" in html
+        assert "retryFailedBroadcast" in html
+        assert "Optional — Leave blank to send image only" in html
         assert "randomizeGreetingImages" in html
         assert "chk-customize-per-name" in html
         assert "testing-config-form" in html

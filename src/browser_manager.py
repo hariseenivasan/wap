@@ -293,8 +293,10 @@ class BrowserManager:
             return False
 
         await self.dismiss_modals()
-        raw_digits = re.sub(r"\D", "", target)
-        search_term = raw_digits if raw_digits else target
+        clean_target = target.strip()
+        raw_digits = re.sub(r"\D", "", clean_target)
+        is_phone = bool(re.match(r"^[\d\s\+\-\(\)]+$", clean_target))
+        search_term = (raw_digits[-10:] if len(raw_digits) >= 10 else raw_digits) if is_phone else clean_target
 
         # Locate search bar
         search_box = self.page.get_by_placeholder("Search or start a new chat")
@@ -305,53 +307,69 @@ class BrowserManager:
                 "div[contenteditable='true'][role='textbox'], input[type='text']"
             ).first
 
-        await search_box.wait_for(state="visible", timeout=10000)
-        await search_box.click()
-        await asyncio.sleep(0.1)
-        await search_box.fill("")
-        await self.page.keyboard.type(search_term, delay=20)
-        await asyncio.sleep(1.5)
+        try:
+            await search_box.wait_for(state="visible", timeout=8000)
+            await search_box.click()
+            await asyncio.sleep(0.1)
+            await self.page.keyboard.press("Control+A")
+            await self.page.keyboard.press("Backspace")
+            await asyncio.sleep(0.1)
+            await self.page.keyboard.type(search_term, delay=20)
+            await asyncio.sleep(1.2)
+        except Exception as e:
+            logger.warning(f"Failed to focus/type into search box: {e}")
 
         # Variations for formatted numbers (e.g. 5 digits + space + 5 digits)
-        spaced_digits = f"{raw_digits[:5]} {raw_digits[5:]}" if len(raw_digits) == 10 else raw_digits
-        spaced_full = f"+91 {spaced_digits}" if len(raw_digits) == 10 else raw_digits
+        digits_10 = raw_digits[-10:] if len(raw_digits) >= 10 else raw_digits
+        spaced_digits = f"{digits_10[:5]} {digits_10[5:]}" if len(digits_10) == 10 else digits_10
+        spaced_full = f"+91 {spaced_digits}" if len(digits_10) == 10 else digits_10
 
         chat_item = None
         selectors = [
             f'#pane-side span[title*="{search_term}" i]',
-            f'#pane-side span[title*="{spaced_digits}"]',
-            f'#pane-side span[title*="{spaced_full}"]',
             f'#pane-side div[role="listitem"]:has-text("{search_term}")',
-            '#pane-side span[title*="You"]',
-            '#pane-side span[title*="Message yourself"]',
-            '#pane-side div[role="listitem"]',
-            '#pane-side div[role="row"]',
+            f'#pane-side div[role="row"]:has-text("{search_term}")',
         ]
+        if is_phone and digits_10:
+            selectors.extend([
+                f'#pane-side span[title*="{digits_10}"]',
+                f'#pane-side span[title*="{spaced_digits}"]',
+                f'#pane-side span[title*="{spaced_full}"]',
+                f'#pane-side div[role="listitem"]:has-text("{digits_10}")',
+            ])
+
         for sel in selectors:
             loc = self.page.locator(sel)
             if await loc.count() > 0 and await loc.first.is_visible():
                 chat_item = loc.first
                 break
 
-        # Fallback to New Chat button
+        # Fallback to New Chat button if not found in open chat list
         if not chat_item:
-            new_btn = self.page.locator("div[role='button'][aria-label='New chat'], [data-icon='new-chat-outline']").first
+            new_btn = self.page.locator("div[role='button'][aria-label='New chat'], [data-icon='new-chat-outline'], button[aria-label='New chat']").first
             if await new_btn.is_visible():
                 await new_btn.click()
                 await asyncio.sleep(0.8)
                 input_box = self.page.locator("div[contenteditable='true'][role='textbox']").first
-                await input_box.click()
-                await self.page.keyboard.type(search_term, delay=20)
-                await asyncio.sleep(1.2)
-                chat_item = self.page.locator("div[role='listitem'], div[role='row']").first
+                if await input_box.is_visible():
+                    await input_box.click()
+                    await self.page.keyboard.press("Control+A")
+                    await self.page.keyboard.press("Backspace")
+                    await self.page.keyboard.type(search_term, delay=20)
+                    await asyncio.sleep(1.2)
+                    chat_item = self.page.locator(f"div[role='listitem']:has-text('{search_term}'), div[role='row']:has-text('{search_term}')").first
 
-        if not chat_item:
+        if not chat_item or not await chat_item.is_visible():
             return False
 
-        await chat_item.click()
-        await asyncio.sleep(1.0)
-        await self.page.wait_for_selector("#main header", timeout=12000)
-        return True
+        try:
+            await chat_item.click()
+            await asyncio.sleep(0.5)
+            await self.page.wait_for_selector("#main header", timeout=8000)
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to open chat: {e}")
+            return False
 
     async def send_text(self, target: str, text: str) -> Dict[str, Any]:
         """Sends a text message and verifies the outgoing bubble in DOM."""
@@ -412,62 +430,94 @@ class BrowserManager:
             if await self.update_status_check() != "WORKING":
                 raise RuntimeError("WhatsApp Web session is not authenticated or not ready.")
 
-            if not os.path.exists(file_path):
-                raise FileNotFoundError(f"Image file does not exist: {file_path}")
+            abs_path = os.path.abspath(file_path)
+            if not os.path.exists(abs_path):
+                raise FileNotFoundError(f"Image file does not exist: {abs_path}")
 
             clean_target = target.replace("@c.us", "").replace("@s.whatsapp.net", "").replace("@g.us", "")
             opened = await self.navigate_to_chat(clean_target)
             if not opened:
                 raise ValueError(f"Could not open conversation for target: {target}")
 
-            # Locate file input
-            file_input = self.page.locator("input[type='file'][accept*='image']").first
-            if await file_input.count() == 0:
-                file_input = self.page.locator("input[type='file']").first
+            await asyncio.sleep(0.5)
 
+            # Locate file input or trigger attach menu in footer
+            file_input = self.page.locator("input[type='file'][accept*='image'], input[accept*='image']").first
             if await file_input.count() == 0:
-                attach_btn = self.page.locator("button[aria-label='Attach'], span[data-icon='plus'], span[data-icon='attach-menu-plus'], [data-icon='clip']").first
-                if await attach_btn.is_visible():
-                    await attach_btn.click()
-                    await asyncio.sleep(0.4)
-                file_input = self.page.locator("input[type='file']").first
+                attach_selectors = [
+                    "#main footer button[aria-label='Attach']",
+                    "#main footer span[data-icon='plus']",
+                    "#main footer [data-icon='attach-menu-plus']",
+                    "#main footer span[data-icon='clip']",
+                    "#main footer div[title='Attach']",
+                    "button[aria-label='Attach']",
+                    "span[data-icon='plus']",
+                    "[data-icon='attach-menu-plus']"
+                ]
+                for a_sel in attach_selectors:
+                    attach_btn = self.page.locator(a_sel).first
+                    if await attach_btn.is_visible():
+                        await attach_btn.click()
+                        await asyncio.sleep(0.5)
+                        break
+
+                file_input = self.page.locator("input[type='file'][accept*='image'], input[accept*='image']").first
+                if await file_input.count() == 0:
+                    file_input = self.page.locator("input[type='file']").first
 
             if await file_input.count() == 0:
                 raise RuntimeError("Could not find file input element on WhatsApp Web.")
 
             # Attach the image
-            await file_input.set_input_files(os.path.abspath(file_path))
-            await asyncio.sleep(1.5)
+            await file_input.set_input_files(abs_path)
+            
+            # Wait for media preview overlay to appear (Send button becomes visible)
+            send_btn = self.page.locator("div[aria-label='Send'], span[data-icon='send'], div[role='button']:has([data-icon='send']), button[aria-label='Send']").last
+            try:
+                await send_btn.wait_for(state="visible", timeout=12000)
+            except Exception:
+                preview_dialog = self.page.locator("div[data-animate-modal-popup='true'], div[role='dialog'], div[role='region']").last
+                if await preview_dialog.is_visible():
+                    send_btn = preview_dialog.locator("div[aria-label='Send'], span[data-icon='send'], [data-icon='send']").first
+                else:
+                    raise RuntimeError("Media preview screen did not appear after file upload.")
 
-            # Type caption if provided
-            if caption:
+            # Type caption ONLY if provided and non-empty (optional/blank text allowed)
+            clean_caption = (caption or "").strip()
+            if clean_caption:
                 caption_selectors = [
+                    "div[data-animate-modal-popup='true'] div[contenteditable='true']",
+                    "div[role='dialog'] div[contenteditable='true']",
                     "div[contenteditable='true'][aria-label*='caption' i]",
-                    "div[contenteditable='true'][data-tab='10']",
-                    "div[contenteditable='true']"
+                    "div[contenteditable='true'][data-tab='10']"
                 ]
                 for c_sel in caption_selectors:
                     c_loc = self.page.locator(c_sel).last
                     if await c_loc.is_visible():
                         await c_loc.click()
-                        await self.page.keyboard.type(caption, delay=15)
+                        await asyncio.sleep(0.1)
+                        await self.page.keyboard.type(clean_caption, delay=15)
                         await asyncio.sleep(0.3)
                         break
 
             # Send image
-            send_btn = self.page.locator("div[aria-label='Send'], span[data-icon='send'], div[role='button']:has([data-icon='send'])").last
             if await send_btn.is_visible():
                 await send_btn.click()
             else:
                 await self.page.keyboard.press("Enter")
 
-            await asyncio.sleep(2.0)
+            # Wait for the media preview modal / send button to detach (confirms dispatch)
+            try:
+                await send_btn.wait_for(state="hidden", timeout=10000)
+            except Exception:
+                await asyncio.sleep(2.0)
+
             msg_id = f"wap_img_{int(time.time()*1000)}"
             return {
                 "success": True,
                 "messageId": msg_id,
                 "chatId": target,
-                "caption": caption,
+                "caption": clean_caption,
                 "timestamp": int(time.time()),
             }
 

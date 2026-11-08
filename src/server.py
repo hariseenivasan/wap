@@ -788,6 +788,8 @@ async def send_image(req: SendImageRequest):
         except ValueError as ve:
             raise HTTPException(status_code=404, detail=str(ve))
         except Exception as e:
+            import traceback
+            print(f"[send_image ERROR]: {traceback.format_exc()}", flush=True)
             raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/media/upload", summary="Upload Image for Greetings / Broadcast")
@@ -941,7 +943,8 @@ async def personalize_greeting_card(req: PersonalizeCardRequest):
         # Build text strings
         suffix_str = f" {req.suffix.strip()}" if (req.suffix and req.suffix.strip() and req.suffix.lower() != "none") else ""
         recipient_display = f"{raw_name}{suffix_str}"
-        greeting_line = req.greeting_text.strip() if req.greeting_text else "Greetings"
+        has_greeting = bool(req.greeting_text and req.greeting_text.strip())
+        greeting_line = req.greeting_text.strip() if has_greeting else ""
         
         # Load fonts (fallback gracefully to system serif/sans or default)
         font_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "fonts")
@@ -979,16 +982,27 @@ async def personalize_greeting_card(req: PersonalizeCardRequest):
             width=max(2, int(w * 0.003))
         )
         
-        # Draw Greeting Line (Golden Calligraphy)
         center_x = w // 2
-        greet_y = card_y0 + int(card_h * 0.35)
-        draw.text((center_x + 2, greet_y + 2), greeting_line, fill=(0, 0, 0, 180), font=font_script, anchor="mm")
-        draw.text((center_x, greet_y), greeting_line, fill=(251, 191, 36, 255), font=font_script, anchor="mm")
-        
-        # Draw Recipient Name Line (Crisp bold sans text)
-        name_y = card_y0 + int(card_h * 0.72)
-        draw.text((center_x + 2, name_y + 2), recipient_display, fill=(0, 0, 0, 180), font=font_sans, anchor="mm")
-        draw.text((center_x, name_y), recipient_display, fill=(248, 250, 252, 255), font=font_sans, anchor="mm")
+        if has_greeting:
+            # Draw Greeting Line (Golden Calligraphy)
+            greet_y = card_y0 + int(card_h * 0.35)
+            draw.text((center_x + 2, greet_y + 2), greeting_line, fill=(0, 0, 0, 180), font=font_script, anchor="mm")
+            draw.text((center_x, greet_y), greeting_line, fill=(251, 191, 36, 255), font=font_script, anchor="mm")
+            
+            # Draw Recipient Name Line (Crisp bold sans text)
+            name_y = card_y0 + int(card_h * 0.72)
+            draw.text((center_x + 2, name_y + 2), recipient_display, fill=(0, 0, 0, 180), font=font_sans, anchor="mm")
+            draw.text((center_x, name_y), recipient_display, fill=(248, 250, 252, 255), font=font_sans, anchor="mm")
+        else:
+            # When greeting text is blank, center recipient name prominently inside badge plate
+            name_y = card_y0 + int(card_h * 0.50)
+            prominent_sans_size = max(22, int(h * 0.052))
+            try:
+                font_prominent = ImageFont.truetype(sans_font_path, prominent_sans_size) if os.path.exists(sans_font_path) else font_sans
+            except Exception:
+                font_prominent = font_sans
+            draw.text((center_x + 2, name_y + 2), recipient_display, fill=(0, 0, 0, 190), font=font_prominent, anchor="mm")
+            draw.text((center_x, name_y), recipient_display, fill=(251, 191, 36, 255), font=font_prominent, anchor="mm")
         
         # Composite and save
         composite = Image.alpha_composite(base_img, overlay).convert("RGB")

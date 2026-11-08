@@ -1164,15 +1164,15 @@
               </small>
             </div>
 
-            <!-- 2. Greeting Message Textarea & Personalization -->
+            <!-- 2. Greeting Message Textarea & Personalization (Optional) -->
             <div style="margin-bottom:1.25rem;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
                 <label for="greeting-message-text" style="font-size:0.82rem; font-weight:700; color:#e2e8f0; margin:0; text-transform:uppercase; letter-spacing:0.04em;">
-                  💬 Greeting Message Template
+                  💬 Greeting Message Caption <span style="font-weight:400; color:var(--text-muted);">(Optional — Leave blank to send image only)</span>
                 </label>
                 <span style="font-size:0.72rem; color:var(--text-muted);">Tip: Use <code>{name}</code> for dynamic insertion</span>
               </div>
-              <textarea id="greeting-message-text" rows="2" placeholder="Good Morning {name}! Wishing you and your family joy and success! 🌟✨" style="margin:0 0 0.75rem 0; resize:vertical; font-family:inherit;"></textarea>
+              <textarea id="greeting-message-text" rows="2" placeholder="Leave blank to send image only, or enter greeting text like: Good Morning {name}! 🌟✨" style="margin:0 0 0.75rem 0; resize:vertical; font-family:inherit;"></textarea>
 
               <!-- Per-Contact Customization Settings Box -->
               <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.85rem 1rem;">
@@ -1314,12 +1314,24 @@
 
             <!-- 5. Broadcast Dispatch Controls -->
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
-              <div style="font-size:0.8rem; color:var(--text-muted);">
-                ⚡ Anti-ban safe interval: 1.5s between dispatches
+              <div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;">
+                <span>⚡ Safe anti-ban pacing: 1.5s interval</span>
+                <span id="broadcast-status-badge" class="badge" style="display:none; font-size:0.72rem; padding:0.15rem 0.5rem;">IDLE</span>
               </div>
-              <button type="button" id="btn-dispatch-broadcast" onclick="dispatchGreetingsBroadcast()" style="padding:0.65rem 2rem; font-weight:800; font-size:0.95rem; background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-color:#f59e0b; color:#fff;">
-                🚀 Dispatch Greetings Broadcast
-              </button>
+              <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                <button type="button" id="btn-pause-broadcast" onclick="togglePauseBroadcast()" class="secondary" style="display:none; padding:0.55rem 1.1rem; font-weight:700; font-size:0.85rem; border-color:#eab308; color:#facc15;">
+                  <span>⏸️</span> <span>Pause</span>
+                </button>
+                <button type="button" id="btn-abort-broadcast" onclick="abortBroadcast()" class="secondary" style="display:none; padding:0.55rem 1.1rem; font-weight:700; font-size:0.85rem; border-color:#ef4444; color:#f87171;">
+                  <span>⏹️</span> <span>Abort</span>
+                </button>
+                <button type="button" id="btn-retry-broadcast" onclick="retryFailedBroadcast()" style="display:none; padding:0.55rem 1.2rem; font-weight:700; font-size:0.85rem; background:linear-gradient(135deg, #10b981 0%, #059669 100%); border-color:#10b981; color:#fff;">
+                  <span>🔁</span> <span>Retry Failed / Remaining</span>
+                </button>
+                <button type="button" id="btn-dispatch-broadcast" onclick="dispatchGreetingsBroadcast(false)" style="padding:0.65rem 2rem; font-weight:800; font-size:0.95rem; background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-color:#f59e0b; color:#fff;">
+                  🚀 Dispatch Greetings Broadcast
+                </button>
+              </div>
             </div>
 
             <!-- Broadcast Progress Bar & Log -->
@@ -3082,7 +3094,7 @@
         [assignments[i], assignments[j]] = [assignments[j], assignments[i]];
       }
 
-      const rawTemplate = document.getElementById('greeting-message-text').value.trim() || 'Good Morning!';
+      const rawTemplate = document.getElementById('greeting-message-text').value.trim();
       const customizePerName = document.getElementById('chk-customize-per-name').checked;
       const suffix = document.getElementById('sel-name-suffix').value;
 
@@ -3098,13 +3110,17 @@
         if (customizePerName && hasName) {
           const suffixStr = (suffix && suffix.toLowerCase() !== 'none') ? ` ${suffix}` : '';
           displayName = `${rec}${suffixStr}`;
-          if (finalCaption.includes('{name}')) {
-            finalCaption = finalCaption.replace(/\{name\}/g, displayName);
+          if (finalCaption) {
+            if (finalCaption.includes('{name}')) {
+              finalCaption = finalCaption.replace(/\{name\}/g, displayName);
+            } else {
+              finalCaption = `${finalCaption} - Dear ${displayName}`;
+            }
           } else {
-            finalCaption = `${finalCaption} - Dear ${displayName}`;
+            finalCaption = ''; // Optional/blank text allowed
           }
         } else {
-          finalCaption = finalCaption.replace(/\{name\}/g, '').replace(/\s+/g, ' ').trim();
+          finalCaption = finalCaption ? finalCaption.replace(/\{name\}/g, '').replace(/\s+/g, ' ').trim() : '';
         }
 
         return {
@@ -3113,7 +3129,10 @@
           hasName: hasName,
           imageIndex: imgIdx + 1,
           image: assignedImg,
-          finalCaption: finalCaption
+          finalCaption: finalCaption,
+          status: 'pending', // 'pending' | 'sending' | 'sent' | 'failed'
+          statusBadge: '⏳ Pending',
+          errorReason: null
         };
       });
 
@@ -3131,28 +3150,94 @@
       }
 
       container.style.display = 'block';
-      grid.innerHTML = assignedDistributionMatrix.map((item, idx) => `
-        <div class="matrix-item">
+      grid.innerHTML = assignedDistributionMatrix.map((item, idx) => {
+        let badgeColor = 'background:rgba(100,116,139,0.25); color:#94a3b8; border:1px solid rgba(148,163,184,0.3);';
+        if (item.status === 'sending') badgeColor = 'background:rgba(56,189,248,0.25); color:#38bdf8; border:1px solid rgba(56,189,248,0.5);';
+        else if (item.status === 'sent') badgeColor = 'background:rgba(34,197,94,0.25); color:#4ade80; border:1px solid rgba(34,197,94,0.5);';
+        else if (item.status === 'failed') badgeColor = 'background:rgba(239,68,68,0.25); color:#f87171; border:1px solid rgba(239,68,68,0.5);';
+
+        const captionDisplay = item.finalCaption ? `&quot;${escapeHtml(item.finalCaption)}&quot;` : `<em>📷 (Image only — no text message)</em>`;
+
+        return `
+        <div class="matrix-item" id="matrix-item-${idx}">
           <img src="${escapeAttr(item.image.url)}" alt="Card #${item.imageIndex}">
           <div style="flex:1; min-width:0;">
-            <div style="font-size:0.85rem; font-weight:700; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              ${escapeHtml(item.displayName)}
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem; margin-bottom:0.2rem;">
+              <span style="font-size:0.85rem; font-weight:700; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${escapeHtml(item.displayName)}
+              </span>
+              <span class="badge" style="font-size:0.7rem; padding:0.15rem 0.45rem; ${badgeColor}; white-space:nowrap;">
+                ${escapeHtml(item.statusBadge || '⏳ Pending')}
+              </span>
             </div>
-            <div style="font-size:0.75rem; color:#38bdf8;">
+            <div style="font-size:0.75rem; color:#38bdf8; margin-bottom:0.15rem;">
               Assigned Card #${item.imageIndex} ${item.hasName ? '✨ (Personalized)' : '📄 (Generic)'}
             </div>
             <div style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              &quot;${escapeHtml(item.finalCaption)}&quot;
+              ${captionDisplay}
             </div>
+            ${item.errorReason ? `<div style="font-size:0.7rem; color:#f87171; margin-top:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeAttr(item.errorReason)}">⚠️ ${escapeHtml(item.errorReason)}</div>` : ''}
           </div>
         </div>
-      `).join('');
+      `}).join('');
+    }
+
+    // === BROADCAST FLOW & DISRUPTION CONTROLLERS ===
+    let isBroadcastRunning = false;
+    let isBroadcastPaused = false;
+    let isBroadcastAborted = false;
+
+    function togglePauseBroadcast() {
+      if (!isBroadcastRunning) return;
+      isBroadcastPaused = !isBroadcastPaused;
+      const pauseBtn = document.getElementById('btn-pause-broadcast');
+      const statusBadge = document.getElementById('broadcast-status-badge');
+      if (isBroadcastPaused) {
+        if (pauseBtn) pauseBtn.innerHTML = '<span>▶️</span> <span>Resume</span>';
+        if (statusBadge) {
+          statusBadge.textContent = 'PAUSED';
+          statusBadge.style.background = 'rgba(234,179,8,0.2)';
+          statusBadge.style.color = '#facc15';
+        }
+      } else {
+        if (pauseBtn) pauseBtn.innerHTML = '<span>⏸️</span> <span>Pause</span>';
+        if (statusBadge) {
+          statusBadge.textContent = 'RUNNING';
+          statusBadge.style.background = 'rgba(34,197,94,0.2)';
+          statusBadge.style.color = '#4ade80';
+        }
+      }
+    }
+
+    function abortBroadcast() {
+      if (!isBroadcastRunning) return;
+      if (confirm("Are you sure you want to stop/abort the remaining broadcast? Delivered messages will NOT be affected, and you can retry remaining contacts anytime.")) {
+        isBroadcastAborted = true;
+        isBroadcastPaused = false;
+        const statusBadge = document.getElementById('broadcast-status-badge');
+        if (statusBadge) {
+          statusBadge.textContent = 'ABORTED';
+          statusBadge.style.background = 'rgba(239,68,68,0.2)';
+          statusBadge.style.color = '#f87171';
+        }
+      }
+    }
+
+    function retryFailedBroadcast() {
+      dispatchGreetingsBroadcast(true);
     }
 
     // === BATCH SEQUENTIAL BROADCAST DISPATCHER ===
-    async function dispatchGreetingsBroadcast() {
+    async function dispatchGreetingsBroadcast(retryOnly = false) {
       if (selectedGreetingRecipients.length === 0) {
         alert("Please add at least one recipient.");
+        return;
+      }
+
+      const hasImages = greetingImages.length > 0;
+      const rawGreetInput = document.getElementById('greeting-message-text').value.trim();
+      if (!hasImages && !rawGreetInput) {
+        alert("Please provide at least one greeting image (or enter a text message) before broadcasting.");
         return;
       }
 
@@ -3160,10 +3245,33 @@
         randomizeGreetingImages();
       }
 
-      const total = assignedDistributionMatrix.length;
-      if (!confirm(`Are you ready to dispatch greetings to ${total} recipient${total === 1 ? '' : 's'} via active engine ${activeEngine.toUpperCase()}?`)) {
-        return;
+      // Filter recipients if retrying remaining only (prevents duplicate sending!)
+      let targetsToDispatch = [];
+      if (retryOnly) {
+        targetsToDispatch = assignedDistributionMatrix.filter(item => item.status !== 'sent');
+        if (targetsToDispatch.length === 0) {
+          alert("All recipients have already received the broadcast successfully!");
+          return;
+        }
+      } else {
+        assignedDistributionMatrix.forEach(item => {
+          item.status = 'pending';
+          item.statusBadge = '⏳ Pending';
+          item.errorReason = null;
+        });
+        targetsToDispatch = assignedDistributionMatrix;
       }
+
+      const totalTargets = targetsToDispatch.length;
+      const confirmMsg = retryOnly 
+        ? `Retry remaining ${totalTargets} unsent/failed recipient${totalTargets === 1 ? '' : 's'}?`
+        : `Are you ready to dispatch greetings to ${totalTargets} recipient${totalTargets === 1 ? '' : 's'} via active engine ${activeEngine.toUpperCase()}?`;
+
+      if (!confirm(confirmMsg)) return;
+
+      isBroadcastRunning = true;
+      isBroadcastPaused = false;
+      isBroadcastAborted = false;
 
       const progressBox = document.getElementById('broadcast-progress-box');
       const progressBar = document.getElementById('broadcast-progress-bar');
@@ -3171,24 +3279,60 @@
       const progressCount = document.getElementById('broadcast-progress-count');
       const logConsole = document.getElementById('broadcast-log-console');
       const dispatchBtn = document.getElementById('btn-dispatch-broadcast');
+      const pauseBtn = document.getElementById('btn-pause-broadcast');
+      const abortBtn = document.getElementById('btn-abort-broadcast');
+      const retryBtn = document.getElementById('btn-retry-broadcast');
+      const statusBadge = document.getElementById('broadcast-status-badge');
 
       progressBox.style.display = 'block';
       progressBar.value = 0;
-      progressBar.max = total;
-      logConsole.innerHTML = `[${new Date().toLocaleTimeString()}] Starting sequential broadcast to ${total} recipients...\n`;
-      dispatchBtn.disabled = true;
+      progressBar.max = totalTargets;
+      if (dispatchBtn) dispatchBtn.disabled = true;
+      if (pauseBtn) {
+        pauseBtn.style.display = 'inline-flex';
+        pauseBtn.innerHTML = '<span>⏸️</span> <span>Pause</span>';
+      }
+      if (abortBtn) abortBtn.style.display = 'inline-flex';
+      if (retryBtn) retryBtn.style.display = 'none';
+
+      if (statusBadge) {
+        statusBadge.style.display = 'inline-block';
+        statusBadge.textContent = 'RUNNING';
+        statusBadge.style.background = 'rgba(34,197,94,0.2)';
+        statusBadge.style.color = '#4ade80';
+      }
+
+      logConsole.innerHTML += `[${new Date().toLocaleTimeString()}] ${retryOnly ? '🔁 Resuming retry for' : '🚀 Starting broadcast to'} ${totalTargets} recipients...\n`;
 
       const customizePerName = document.getElementById('chk-customize-per-name').checked;
       const suffix = document.getElementById('sel-name-suffix').value;
-      const rawGreetText = document.getElementById('greeting-message-text').value.trim() || 'Good Morning!';
+      const rawGreetText = document.getElementById('greeting-message-text').value.trim();
 
       let successCount = 0;
       let failCount = 0;
 
-      for (let i = 0; i < total; i++) {
-        const item = assignedDistributionMatrix[i];
-        progressLabel.textContent = `Dispatching to ${item.recipient} (${i + 1}/${total})...`;
-        progressCount.textContent = `${i + 1} / ${total}`;
+      for (let i = 0; i < totalTargets; i++) {
+        // Disruption check: Aborted?
+        if (isBroadcastAborted) {
+          logConsole.innerHTML += `[${new Date().toLocaleTimeString()}] ⏹️ Broadcast stopped by user. Remaining contacts kept in queue.\n`;
+          break;
+        }
+
+        // Disruption check: Paused?
+        while (isBroadcastPaused && !isBroadcastAborted) {
+          progressLabel.textContent = `⏸️ Broadcast Paused (${i}/${totalTargets} sent). Click Resume to continue...`;
+          await new Promise(r => setTimeout(r, 400));
+        }
+        if (isBroadcastAborted) break;
+
+        const item = targetsToDispatch[i];
+        item.status = 'sending';
+        item.statusBadge = '🚀 Sending...';
+        item.errorReason = null;
+        renderDistributionMatrix();
+
+        progressLabel.textContent = `Dispatching to ${item.recipient} (${i + 1}/${totalTargets})...`;
+        progressCount.textContent = `${i + 1} / ${totalTargets}`;
         progressBar.value = i + 1;
 
         let targetImagePath = item.image ? item.image.path : null;
@@ -3204,7 +3348,7 @@
                 file_path: item.image.path,
                 name: item.recipient,
                 suffix: suffix,
-                greeting_text: rawGreetText.replace(/\{name\}/g, '').trim() || 'Good Morning'
+                greeting_text: rawGreetText.replace(/\{name\}/g, '').trim()
               })
             });
             const persData = await persRes.json();
@@ -3227,7 +3371,7 @@
               body: JSON.stringify({
                 chatId: item.recipient,
                 file_path: targetImagePath,
-                caption: item.finalCaption,
+                caption: item.finalCaption || "",
                 engine: activeEngine
               })
             });
@@ -3245,28 +3389,65 @@
 
           const resData = await res.json();
           if (res.ok && resData.success !== false) {
+            item.status = 'sent';
+            item.statusBadge = '✅ Delivered';
+            item.errorReason = null;
             successCount++;
-            logConsole.innerHTML += `  ✅ [${i + 1}/${total}] Delivered to ${item.recipient} (${resData.messageId || 'OK'})\n`;
+            logConsole.innerHTML += `  ✅ [${i + 1}/${totalTargets}] Delivered to ${item.recipient} (${resData.messageId || 'OK'})\n`;
           } else {
+            item.status = 'failed';
+            item.statusBadge = '❌ Failed';
+            item.errorReason = resData.error || resData.detail || 'Dispatch failed';
             failCount++;
-            logConsole.innerHTML += `  ❌ [${i + 1}/${total}] Error for ${item.recipient}: ${resData.error || resData.detail || 'Dispatch failed'}\n`;
+            logConsole.innerHTML += `  ❌ [${i + 1}/${totalTargets}] Error for ${item.recipient}: ${item.errorReason}\n`;
           }
         } catch (err) {
+          item.status = 'failed';
+          item.statusBadge = '❌ Network Err';
+          item.errorReason = err.message;
           failCount++;
-          logConsole.innerHTML += `  ❌ [${i + 1}/${total}] Network error for ${item.recipient}: ${err.message}\n`;
+          logConsole.innerHTML += `  ❌ [${i + 1}/${totalTargets}] Network error for ${item.recipient}: ${err.message}\n`;
         }
 
+        renderDistributionMatrix();
         logConsole.scrollTop = logConsole.scrollHeight;
 
         // Anti-ban delay between dispatches (1.5s)
-        if (i < total - 1) {
+        if (i < totalTargets - 1 && !isBroadcastAborted) {
           await new Promise(r => setTimeout(r, 1500));
         }
       }
 
-      progressLabel.textContent = `Broadcast Complete: ${successCount} Sent, ${failCount} Failed`;
-      logConsole.innerHTML += `\n[${new Date().toLocaleTimeString()}] ✅ Completed: ${successCount} successful, ${failCount} errors.\n`;
-      dispatchBtn.disabled = false;
+      isBroadcastRunning = false;
+      if (dispatchBtn) dispatchBtn.disabled = false;
+      if (pauseBtn) pauseBtn.style.display = 'none';
+      if (abortBtn) abortBtn.style.display = 'none';
+
+      const remainingUnsent = assignedDistributionMatrix.filter(it => it.status !== 'sent').length;
+      if (remainingUnsent > 0 && retryBtn) {
+        retryBtn.style.display = 'inline-flex';
+        retryBtn.innerHTML = `<span>🔁</span> <span>Retry Failed / Remaining (${remainingUnsent})</span>`;
+      }
+
+      if (isBroadcastAborted) {
+        progressLabel.textContent = `Broadcast Aborted: ${successCount} Sent, ${remainingUnsent} Remaining`;
+        if (statusBadge) {
+          statusBadge.textContent = 'ABORTED';
+          statusBadge.style.background = 'rgba(239,68,68,0.2)';
+          statusBadge.style.color = '#f87171';
+        }
+      } else {
+        progressLabel.textContent = `Broadcast Complete: ${successCount} Sent, ${failCount} Failed`;
+        if (statusBadge) {
+          statusBadge.textContent = failCount === 0 ? 'COMPLETED' : 'PARTIAL';
+          statusBadge.style.background = failCount === 0 ? 'rgba(34,197,94,0.2)' : 'rgba(234,179,8,0.2)';
+          statusBadge.style.color = failCount === 0 ? '#4ade80' : '#facc15';
+        }
+      }
+
+      logConsole.innerHTML += `\n[${new Date().toLocaleTimeString()}] ✅ Run finished: ${successCount} delivered, ${failCount} failed, ${remainingUnsent} remaining unsent.\n`;
+      renderDistributionMatrix();
+      if (dispatchBtn) dispatchBtn.disabled = false;
     }
 
     // Init
