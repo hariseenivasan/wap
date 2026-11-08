@@ -11,32 +11,42 @@
       --primary-hover: #059669;
       --waha-color: #3b82f6;
       --wap-color: #10b981;
-      --bg-dark: #0f172a;
-      --card-bg: #1e293b;
+      --bg-dark: #090d16;
+      --card-bg: rgba(15, 23, 42, 0.88);
+      --card-inner: rgba(9, 13, 22, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
-      --border-color: #334155;
+      --border-color: #1e293b;
+      --accent-cyan: #38bdf8;
     }
     body {
-      background-color: var(--bg-dark);
+      background: radial-gradient(circle at 50% 0%, #0f172a 0%, #090d16 100%);
+      min-height: 100vh;
       color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
       padding: 0;
     }
     .header-bar {
-      background-color: #1e293b;
-      border-bottom: 1px solid var(--border-color);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
       padding: 1rem 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
     .brand-title {
       font-size: 1.35rem;
-      font-weight: 700;
+      font-weight: 800;
+      letter-spacing: -0.02em;
       display: flex;
       align-items: center;
       gap: 0.6rem;
@@ -87,33 +97,66 @@
       border: 1px solid #3b82f6;
     }
     .schedule-card {
-      background: #0f172a;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
+      background: var(--card-inner);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
       padding: 1.25rem;
       margin-bottom: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     }
-    .schedule-header {
+    .schedule-card:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+      transform: translateY(-1px);
+    }
+    .contact-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(56, 189, 248, 0.3);
+      flex-shrink: 0;
+    }
+    .window-chip {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+      margin-top: 0.5rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 0.5rem;
     }
-    .schedule-time-box {
-      background: #090d16;
-      border: 1px solid #1e293b;
+    .time-badge {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      padding: 0.2rem 0.5rem;
       border-radius: 6px;
-      padding: 0.75rem 1rem;
-      font-size: 0.85rem;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+    .window-form-row {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+    .window-form-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+      margin-bottom: 0.5rem;
     }
     .log-tab-btn {
       background: #1e293b;
@@ -144,29 +187,33 @@
     .tab-nav {
       display: flex;
       gap: 0.5rem;
-      border-bottom: 2px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
       margin-bottom: 1.5rem;
       overflow-x: auto;
+      padding-bottom: 0.25rem;
+      scrollbar-width: thin;
     }
     .tab-btn {
-      background: none;
+      background: transparent;
       border: none;
       color: var(--text-muted);
-      padding: 0.75rem 1.25rem;
+      padding: 0.65rem 1.1rem;
       font-weight: 600;
+      font-size: 0.9rem;
       cursor: pointer;
-      border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-      transition: all 0.2s;
+      border-radius: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       white-space: nowrap;
     }
     .tab-btn:hover {
       color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
     }
     .tab-btn.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-      background: none;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
     }
     .tab-pane {
       display: none;
@@ -176,22 +223,29 @@
     }
     .card-box {
       background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
       padding: 1.5rem;
       margin-bottom: 1.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin-bottom: 1.5rem;
     }
     .stat-card {
-      background: #0f172a;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 1rem 1.2rem;
+      background: rgba(9, 13, 22, 0.7);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      transition: all 0.2s ease;
+    }
+    .stat-card:hover {
+      border-color: rgba(56, 189, 248, 0.25);
     }
     .stat-label {
       font-size: 0.8rem;
@@ -485,24 +539,31 @@
       </div>
     </section>
 
-    <!-- TAB 3: MESSAGE SCHEDULES (config/gws.json) -->
+    <!-- TAB 3: MESSAGE SCHEDULES -->
     <section id="pane-schedules" class="tab-pane">
       <div class="card-box">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
           <div>
-            <h3 style="margin:0;">📅 WABot Automated Message Schedules</h3>
+            <h3 style="margin:0; display:flex; align-items:center; gap:0.5rem;">
+              <span>📅</span>
+              <span>Automated Message Schedules</span>
+            </h3>
             <p style="color:var(--text-muted); font-size:0.85rem; margin:0.3rem 0 0 0;">
-              View active schedules, next delivery windows, and edit <code>config/gws.json</code>.
+              Manage recurring WhatsApp message dispatches with time windows, intervals, and anti-detection jitter.
             </p>
           </div>
-          <div style="display:flex; gap:0.5rem;">
-            <button onclick="loadSchedules()" class="secondary" style="padding:0.4rem 1rem; font-size:0.85rem;">🔄 Refresh Schedules</button>
-            <button onclick="toggleScheduleEditor()" id="btn-toggle-schedule-editor" style="padding:0.4rem 1rem; font-size:0.85rem;">✏️ Edit Schedule JSON</button>
+          <div style="display:flex; gap:0.6rem; align-items:center;">
+            <button onclick="loadSchedules()" class="secondary" style="padding:0.45rem 1rem; font-size:0.85rem; border-radius:8px;">
+              🔄 Refresh
+            </button>
+            <button id="btn-add-schedule" onclick="openAddScheduleModal()" style="padding:0.45rem 1.25rem; font-size:0.85rem; font-weight:700; border-radius:8px; background:linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-color:#0284c7; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);">
+              ➕ Add Schedule
+            </button>
           </div>
         </div>
 
         <!-- Schedule Metrics Summary -->
-        <div class="stats-grid" style="margin-bottom:1.25rem;">
+        <div class="stats-grid" style="margin-bottom:1.5rem;">
           <div class="stat-card">
             <div class="stat-label">Total Recipients</div>
             <div class="stat-value" id="stat-schedules-contacts">0</div>
@@ -515,22 +576,6 @@
             <div class="stat-label">Currently in Window</div>
             <div class="stat-value" id="stat-schedules-now" style="color:#38bdf8;">0</div>
           </div>
-        </div>
-
-        <!-- Schedule Editor (Collapsed by default) -->
-        <div id="schedule-editor-panel" style="display:none; background:#090d16; border:1px solid var(--border-color); border-radius:8px; padding:1.25rem; margin-bottom:1.5rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
-            <h4 style="margin:0; color:#38bdf8;">✏️ Edit config/gws.json</h4>
-            <div style="display:flex; gap:0.5rem;">
-              <button onclick="formatScheduleJson()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">📐 Format JSON</button>
-              <button onclick="saveSchedulesFromJson()" style="padding:0.25rem 1rem; font-size:0.8rem;">💾 Save Changes</button>
-            </div>
-          </div>
-          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
-            Edit the raw schedule configurations below. Changes are hot-reloaded automatically by WABot on the next loop cycle without requiring a process restart.
-          </p>
-          <textarea id="schedules-json-textarea" style="width:100%; height:320px; background:#05070d; color:#e2e8f0; font-family:'Courier New', monospace; font-size:0.82rem; padding:1rem; border-radius:6px; border:1px solid #1e293b; resize:vertical; box-sizing:border-box;"></textarea>
-          <div id="schedule-save-status" style="margin-top:0.5rem; font-size:0.85rem; font-weight:600;"></div>
         </div>
 
         <!-- Live Interactive Schedule Cards Container -->
@@ -767,6 +812,67 @@
         <button onclick="closeModal()" class="secondary" style="padding:0.5rem 1.2rem;">Cancel</button>
         <button id="modal-confirm-btn" onclick="executeEngineSwitch()" disabled style="padding:0.5rem 1.5rem; background:#ef4444; border-color:#ef4444; font-weight:700;">Confirm & Relogin</button>
       </div>
+    </div>
+  </div>
+
+  <!-- USER-FRIENDLY SCHEDULE MODAL -->
+  <div id="schedule-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width:620px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.75rem;">
+        <h3 id="schedule-modal-title" style="margin:0; font-size:1.2rem; display:flex; align-items:center; gap:0.5rem;">
+          <span>📅</span> <span id="schedule-modal-title-text">Create Message Schedule</span>
+        </h3>
+        <button type="button" onclick="closeScheduleModal()" class="secondary" style="background:none; border:none; color:var(--text-muted); font-size:1.3rem; cursor:pointer; padding:0 0.4rem; line-height:1;">✕</button>
+      </div>
+
+      <form id="schedule-edit-form" onsubmit="event.preventDefault(); saveScheduleFromModal();">
+        <input type="hidden" id="sched-form-index" value="-1">
+
+        <div style="margin-bottom:1rem;">
+          <label for="sched-contact-name" style="font-size:0.85rem; font-weight:600; color:#e2e8f0; margin-bottom:0.35rem; display:block;">
+            👤 Recipient Name or Phone Number <span style="color:#ef4444;">*</span>
+          </label>
+          <input type="text" id="sched-contact-name" placeholder="e.g. John Doe, Family Group, or 919876543210" required style="margin:0; border-radius:8px; background:#090d16; border:1px solid var(--border-color); color:#fff;">
+          <small style="color:var(--text-muted); font-size:0.75rem;">Enter contact name matching your WhatsApp chats or full international phone number.</small>
+        </div>
+
+        <div style="margin-bottom:1.25rem;">
+          <label for="sched-message" style="font-size:0.85rem; font-weight:600; color:#e2e8f0; margin-bottom:0.35rem; display:block;">
+            💬 Message Template <span style="color:#ef4444;">*</span>
+          </label>
+          <textarea id="sched-message" rows="3" placeholder="Enter message text to be dispatched during active delivery windows..." required style="margin:0; border-radius:8px; background:#090d16; border:1px solid var(--border-color); color:#fff; resize:vertical; font-family:inherit;"></textarea>
+        </div>
+
+        <!-- Windows Repeater Section -->
+        <div style="margin-bottom:1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+            <label style="font-size:0.85rem; font-weight:700; color:#38bdf8; margin:0; text-transform:uppercase; letter-spacing:0.04em;">
+              ⏰ Delivery Windows &amp; Recurrence Rules
+            </label>
+            <button type="button" onclick="addWindowRow()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.78rem; border-radius:6px; background:#1e293b; color:#38bdf8; border:1px solid rgba(56,189,248,0.3);">
+              ➕ Add Another Window
+            </button>
+          </div>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 0.75rem 0;">
+            Define one or multiple delivery time slots. WABot automatically calculates randomized jitter within each active slot.
+          </p>
+
+          <div id="windows-container">
+            <!-- Dynamic window rows injected here -->
+          </div>
+        </div>
+
+        <div id="sched-modal-feedback" style="font-size:0.85rem; margin-bottom:0.75rem; font-weight:600; min-height:1.2rem;"></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:1rem;">
+          <button type="button" onclick="closeScheduleModal()" class="secondary" style="padding:0.5rem 1.25rem; font-size:0.85rem; border-radius:8px;">
+            Cancel
+          </button>
+          <button type="submit" id="btn-save-schedule-modal" style="padding:0.5rem 1.6rem; font-size:0.85rem; font-weight:700; border-radius:8px; background:#10b981; border-color:#10b981;">
+            💾 Save Schedule
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -1249,37 +1355,47 @@
       });
     }
 
-    // === MESSAGE SCHEDULES (config/gws.json) ===
+    // === USER-FRIENDLY MESSAGE SCHEDULES (config/user_schedules.json) ===
+    let currentSchedules = [];
+    let windowCounter = 0;
+
     async function loadSchedules() {
       const container = document.getElementById('schedules-list-container');
-      const textarea = document.getElementById('schedules-json-textarea');
       try {
         const res = await fetch('/api/schedules');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const schedules = data.schedules || [];
+        currentSchedules = data.schedules || [];
 
-        if (textarea) {
-          textarea.value = JSON.stringify(schedules, null, 2);
-        }
-
-        document.getElementById('stat-schedules-contacts').textContent = schedules.length;
+        document.getElementById('stat-schedules-contacts').textContent = currentSchedules.length;
 
         let activeNowCount = 0;
         let todayCount = 0;
 
-        if (schedules.length === 0) {
-          container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">No message schedules configured in config/gws.json.</div>';
+        if (currentSchedules.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding:3rem 1.5rem; background:rgba(15,23,42,0.6); border:1px dashed rgba(255,255,255,0.15); border-radius:12px;">
+              <div style="font-size:2.5rem; margin-bottom:0.75rem;">📭</div>
+              <h4 style="margin:0 0 0.5rem 0; color:#f8fafc;">No Message Schedules Configured</h4>
+              <p style="color:var(--text-muted); font-size:0.9rem; max-width:440px; margin:0 auto 1.25rem auto;">
+                Set up automated recurring messages with custom delivery time windows and anti-detection jitter.
+              </p>
+              <button onclick="openAddScheduleModal()" style="padding:0.5rem 1.5rem; font-weight:700; border-radius:8px; background:linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                ➕ Create First Schedule
+              </button>
+            </div>
+          `;
           document.getElementById('stat-schedules-today').textContent = '0';
           document.getElementById('stat-schedules-now').textContent = '0';
           return;
         }
 
         let html = '';
-        schedules.forEach((entry, idx) => {
+        currentSchedules.forEach((entry, idx) => {
           const contact = entry.contact_name || entry.phone || 'Unnamed Recipient';
           const msg = entry.message || '(No message defined)';
           const schedList = entry.schedules || [];
+          const initial = (contact.replace(/^[^a-zA-Z0-9]+/, '')[0] || 'W').toUpperCase();
 
           let cardSchedHtml = '';
           schedList.forEach((s) => {
@@ -1308,25 +1424,23 @@
               badgeText = `IN ${ev.days_until} DAYS`;
             }
 
-            const recType = s.type || 'interval';
-            let recText = '';
-            if (recType === 'daily') {
-              recText = 'Daily';
-            } else if (recType === 'interval') {
-              recText = `Every ${s.interval_days || 1} day(s) from ${s.start_date || 'start'}`;
+            const recType = s.type || 'daily';
+            let recText = 'Daily';
+            if (recType === 'interval') {
+              recText = `Every ${s.interval_days || 1}d (from ${s.start_date || 'start'})`;
             } else if (recType === 'dates') {
-              recText = `Specific dates: ${(s.dates || []).join(', ')}`;
+              recText = `Specific dates`;
             }
 
             cardSchedHtml += `
-              <div class="schedule-time-box" style="margin-top:0.5rem;">
-                <div>
-                  <span style="font-weight:700; color:#e2e8f0;">⏰ ${escapeHtml(s.start_time || '00:00')} - ${escapeHtml(s.end_time || '23:59')}</span>
-                  <span style="color:var(--text-muted); margin-left:0.5rem; font-size:0.8rem;">(${escapeHtml(recText)})</span>
-                  ${s.jitter_percentage ? `<span style="color:#a855f7; font-size:0.75rem; margin-left:0.5rem;">±${s.jitter_percentage}% jitter</span>` : ''}
+              <div class="window-chip">
+                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                  <span class="time-badge">⏰ ${escapeHtml(s.start_time || '00:00')} - ${escapeHtml(s.end_time || '23:59')}</span>
+                  <span style="color:#cbd5e1; font-size:0.8rem; font-weight:600;">🔄 ${escapeHtml(recText)}</span>
+                  ${s.jitter_percentage ? `<span style="color:#c084fc; font-size:0.75rem; background:rgba(192,132,252,0.12); padding:0.15rem 0.45rem; border-radius:4px;">±${s.jitter_percentage}% jitter</span>` : ''}
                 </div>
                 <div>
-                  <span class="badge ${badgeClass}" style="font-size:0.75rem; padding:0.2rem 0.6rem;">${badgeText}</span>
+                  <span class="badge ${badgeClass}" style="font-size:0.72rem; padding:0.2rem 0.55rem;">${badgeText}</span>
                 </div>
               </div>
             `;
@@ -1334,17 +1448,41 @@
 
           html += `
             <div class="schedule-card">
-              <div class="schedule-header">
-                <div>
-                  <span style="font-size:1.05rem; font-weight:700; color:#38bdf8;">👤 ${escapeHtml(contact)}</span>
-                  <span style="color:var(--text-muted); font-size:0.8rem; margin-left:0.5rem;">(${schedList.length} schedule window${schedList.length === 1 ? '' : 's'})</span>
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                  <div class="contact-avatar">${escapeHtml(initial)}</div>
+                  <div>
+                    <div style="font-size:1.05rem; font-weight:700; color:#f8fafc;">${escapeHtml(contact)}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">${schedList.length} delivery window${schedList.length === 1 ? '' : 's'} configured</div>
+                  </div>
+                </div>
+                <div style="display:flex; gap:0.4rem;">
+                  <button onclick="openEditScheduleModal(${idx})" class="secondary" style="padding:0.35rem 0.75rem; font-size:0.78rem; border-radius:6px; background:#1e293b; color:#38bdf8; border:1px solid rgba(56,189,248,0.25);">
+                    ✏️ Edit
+                  </button>
+                  <button onclick="deleteScheduleItem(${idx})" class="secondary" style="padding:0.35rem 0.75rem; font-size:0.78rem; border-radius:6px; background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.3);">
+                    🗑️ Delete
+                  </button>
                 </div>
               </div>
-              <div style="background:#05070d; border:1px solid #1e293b; border-radius:6px; padding:0.75rem; font-size:0.85rem; color:#cbd5e1; white-space:pre-wrap; word-break:break-word;">
-                <span style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; display:block; margin-bottom:0.25rem;">Message Template:</span>
-                ${escapeHtml(msg)}
+
+              <!-- Message Template Box -->
+              <div style="margin-top:0.75rem; background:rgba(9,13,22,0.8); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:0.75rem 0.9rem; position:relative;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                  <span style="color:var(--text-muted); font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Message Template</span>
+                  <button type="button" onclick="copyTextToClipboard('${escapeAttr(msg)}', this)" class="secondary" style="padding:0.15rem 0.5rem; font-size:0.72rem; border-radius:4px; background:transparent; border:none; color:#38bdf8; cursor:pointer;">
+                    📋 Copy
+                  </button>
+                </div>
+                <div style="color:#e2e8f0; font-size:0.85rem; line-height:1.45; white-space:pre-wrap; word-break:break-word;">
+                  ${escapeHtml(msg)}
+                </div>
               </div>
-              <div>${cardSchedHtml}</div>
+
+              <!-- Windows Chips -->
+              <div style="margin-top:0.6rem;">
+                ${cardSchedHtml}
+              </div>
             </div>
           `;
         });
@@ -1357,60 +1495,254 @@
       }
     }
 
-    function toggleScheduleEditor() {
-      const panel = document.getElementById('schedule-editor-panel');
-      const btn = document.getElementById('btn-toggle-schedule-editor');
-      if (panel.style.display === 'none') {
-        panel.style.display = 'block';
-        btn.textContent = '✖️ Close JSON Editor';
-      } else {
-        panel.style.display = 'none';
-        btn.textContent = '✏️ Edit Schedule JSON';
+    function openAddScheduleModal() {
+      document.getElementById('sched-form-index').value = "-1";
+      document.getElementById('schedule-modal-title-text').textContent = "Create Message Schedule";
+      document.getElementById('sched-contact-name').value = "";
+      document.getElementById('sched-message').value = "";
+      document.getElementById('sched-modal-feedback').textContent = "";
+      
+      const container = document.getElementById('windows-container');
+      container.innerHTML = "";
+      addWindowRow({
+        start_time: "09:00",
+        end_time: "10:00",
+        type: "daily",
+        interval_days: 1,
+        start_date: new Date().toISOString().split('T')[0],
+        jitter_percentage: 15
+      });
+
+      document.getElementById('schedule-modal').style.display = 'flex';
+    }
+
+    function openEditScheduleModal(index) {
+      if (index < 0 || index >= currentSchedules.length) return;
+      const item = currentSchedules[index];
+
+      document.getElementById('sched-form-index').value = index;
+      document.getElementById('schedule-modal-title-text').textContent = `Edit Schedule: ${item.contact_name || item.phone || 'Contact'}`;
+      document.getElementById('sched-contact-name').value = item.contact_name || item.phone || "";
+      document.getElementById('sched-message').value = item.message || "";
+      document.getElementById('sched-modal-feedback').textContent = "";
+
+      const container = document.getElementById('windows-container');
+      container.innerHTML = "";
+
+      const windows = (item.schedules && item.schedules.length > 0) ? item.schedules : [{
+        start_time: "09:00",
+        end_time: "10:00",
+        type: "daily",
+        jitter_percentage: 15
+      }];
+
+      windows.forEach(w => addWindowRow(w));
+      document.getElementById('schedule-modal').style.display = 'flex';
+    }
+
+    function closeScheduleModal() {
+      document.getElementById('schedule-modal').style.display = 'none';
+    }
+
+    function addWindowRow(data = {}) {
+      windowCounter++;
+      const id = windowCounter;
+      const startTime = data.start_time || "09:00";
+      const endTime = data.end_time || "10:00";
+      const type = data.type || "daily";
+      const jitter = data.jitter_percentage !== undefined ? data.jitter_percentage : 15;
+      const interval = data.interval_days || 2;
+      const startDate = data.start_date || new Date().toISOString().split('T')[0];
+
+      const div = document.createElement('div');
+      div.className = 'window-form-row';
+      div.id = `win-row-${id}`;
+      div.innerHTML = `
+        <div class="window-form-header">
+          <span style="font-weight:700; font-size:0.78rem; color:#38bdf8; text-transform:uppercase;">Time Window</span>
+          <button type="button" onclick="removeWindowRow(${id})" style="background:none; border:none; color:#f87171; font-size:0.78rem; cursor:pointer; padding:0.15rem 0.4rem; border-radius:4px;">✕ Remove</button>
+        </div>
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem; display:block;">Start Time</label>
+            <input type="time" class="win-start-time" value="${startTime}" required style="margin:0; font-size:0.85rem; padding:0.35rem 0.5rem; background:#05070d; border-radius:6px; border:1px solid var(--border-color); color:#fff;">
+          </div>
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem; display:block;">End Time</label>
+            <input type="time" class="win-end-time" value="${endTime}" required style="margin:0; font-size:0.85rem; padding:0.35rem 0.5rem; background:#05070d; border-radius:6px; border:1px solid var(--border-color); color:#fff;">
+          </div>
+        </div>
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem; display:block;">Recurrence Pattern</label>
+            <select class="win-type" onchange="toggleWindowTypeInputs(${id})" style="margin:0; font-size:0.85rem; padding:0.35rem 0.5rem; background:#05070d; border-radius:6px; border:1px solid var(--border-color); color:#fff;">
+              <option value="daily" ${type === 'daily' ? 'selected' : ''}>Daily (Every Day)</option>
+              <option value="interval" ${type === 'interval' ? 'selected' : ''}>Interval (Every N Days)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem; display:block;">Anti-Detection Jitter (±%)</label>
+            <input type="number" class="win-jitter" min="0" max="50" value="${jitter}" style="margin:0; font-size:0.85rem; padding:0.35rem 0.5rem; background:#05070d; border-radius:6px; border:1px solid var(--border-color); color:#fff;">
+          </div>
+        </div>
+        <div id="win-interval-box-${id}" class="grid" style="grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:0.5rem; display:${type === 'interval' ? 'grid' : 'none'};">
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem; display:block;">Interval (Every N Days)</label>
+            <input type="number" class="win-interval-days" min="1" max="365" value="${interval}" style="margin:0; font-size:0.85rem; padding:0.35rem 0.5rem; background:#05070d; border-radius:6px; border:1px solid var(--border-color); color:#fff;">
+          </div>
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem; display:block;">Anchor Start Date</label>
+            <input type="date" class="win-start-date" value="${startDate}" style="margin:0; font-size:0.85rem; padding:0.35rem 0.5rem; background:#05070d; border-radius:6px; border:1px solid var(--border-color); color:#fff;">
+          </div>
+        </div>
+      `;
+
+      document.getElementById('windows-container').appendChild(div);
+    }
+
+    function removeWindowRow(id) {
+      const row = document.getElementById(`win-row-${id}`);
+      const container = document.getElementById('windows-container');
+      if (container.children.length <= 1) {
+        alert("Each schedule must have at least one delivery time window.");
+        return;
+      }
+      if (row) row.remove();
+    }
+
+    function toggleWindowTypeInputs(id) {
+      const row = document.getElementById(`win-row-${id}`);
+      if (!row) return;
+      const typeSelect = row.querySelector('.win-type');
+      const intervalBox = document.getElementById(`win-interval-box-${id}`);
+      if (typeSelect && intervalBox) {
+        intervalBox.style.display = (typeSelect.value === 'interval') ? 'grid' : 'none';
       }
     }
 
-    function formatScheduleJson() {
-      const ta = document.getElementById('schedules-json-textarea');
-      try {
-        const parsed = JSON.parse(ta.value);
-        ta.value = JSON.stringify(parsed, null, 2);
-      } catch (err) {
-        alert("Invalid JSON: " + err.message);
+    async function saveScheduleFromModal() {
+      const feedback = document.getElementById('sched-modal-feedback');
+      const contact = document.getElementById('sched-contact-name').value.trim();
+      const message = document.getElementById('sched-message').value.trim();
+      const indexStr = document.getElementById('sched-form-index').value;
+      const index = parseInt(indexStr, 10);
+
+      if (!contact) {
+        feedback.style.color = '#ef4444';
+        feedback.textContent = 'Please enter a recipient contact name or phone number.';
+        return;
       }
-    }
+      if (!message) {
+        feedback.style.color = '#ef4444';
+        feedback.textContent = 'Please enter a message template.';
+        return;
+      }
 
-    async function saveSchedulesFromJson() {
-      const statusEl = document.getElementById('schedule-save-status');
-      const ta = document.getElementById('schedules-json-textarea');
-      statusEl.style.color = '#38bdf8';
-      statusEl.textContent = 'Saving config/gws.json...';
+      const rows = document.querySelectorAll('#windows-container .window-form-row');
+      if (rows.length === 0) {
+        feedback.style.color = '#ef4444';
+        feedback.textContent = 'Please add at least one delivery time window.';
+        return;
+      }
 
-      try {
-        const parsed = JSON.parse(ta.value);
-        if (!Array.isArray(parsed)) {
-          throw new Error("Schedules root must be a JSON array of recipient objects");
+      const schedulesList = [];
+      rows.forEach(r => {
+        const startTime = r.querySelector('.win-start-time').value || "09:00";
+        const endTime = r.querySelector('.win-end-time').value || "10:00";
+        const type = r.querySelector('.win-type').value || "daily";
+        const jitter = parseInt(r.querySelector('.win-jitter').value, 10) || 0;
+
+        const wObj = {
+          start_time: startTime,
+          end_time: endTime,
+          type: type,
+          jitter_percentage: jitter
+        };
+
+        if (type === 'interval') {
+          wObj.interval_days = parseInt(r.querySelector('.win-interval-days').value, 10) || 1;
+          wObj.start_date = r.querySelector('.win-start-date').value || new Date().toISOString().split('T')[0];
         }
 
-        const res = await fetch('/api/schedules', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ schedules: parsed })
-        });
+        schedulesList.push(wObj);
+      });
+
+      const payload = {
+        contact_name: contact,
+        message: message,
+        schedules: schedulesList
+      };
+
+      feedback.style.color = '#38bdf8';
+      feedback.textContent = 'Saving schedule...';
+
+      try {
+        let res;
+        if (index >= 0) {
+          res = await fetch(`/api/schedules/${index}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          res = await fetch('/api/schedules/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
 
         const data = await res.json();
         if (res.ok && data.success) {
-          statusEl.style.color = '#34d399';
-          statusEl.textContent = `✅ Saved successfully (${data.count} schedules)! Hot-reloaded by WABot.`;
-          await loadSchedules();
-          setTimeout(() => { statusEl.textContent = ''; }, 4000);
+          feedback.style.color = '#34d399';
+          feedback.textContent = '✅ Schedule saved successfully!';
+          setTimeout(() => {
+            closeScheduleModal();
+            loadSchedules();
+          }, 600);
         } else {
-          statusEl.style.color = '#ef4444';
-          statusEl.textContent = `❌ Failed to save: ${data.detail || data.error || 'Server error'}`;
+          feedback.style.color = '#ef4444';
+          feedback.textContent = `❌ ${data.detail || data.error || 'Failed to save'}`;
         }
       } catch (err) {
-        statusEl.style.color = '#ef4444';
-        statusEl.textContent = `❌ JSON Error: ${err.message}`;
+        feedback.style.color = '#ef4444';
+        feedback.textContent = `❌ Request error: ${err.message}`;
       }
+    }
+
+    async function deleteScheduleItem(index) {
+      if (index < 0 || index >= currentSchedules.length) return;
+      const item = currentSchedules[index];
+      const name = item.contact_name || item.phone || `#${index}`;
+
+      if (!confirm(`Are you sure you want to delete the schedule for "${name}"?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/schedules/${index}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          await loadSchedules();
+        } else {
+          alert(`Failed to delete: ${data.detail || data.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        alert(`Error deleting schedule: ${err.message}`);
+      }
+    }
+
+    function copyTextToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1800);
+      });
+    }
+
+    function escapeAttr(str) {
+      if (!str) return '';
+      return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
     }
 
     // === CALL EXTRACTION CONFIG ===

@@ -19,7 +19,7 @@ except (ImportError, ModuleNotFoundError):
 
 USER_DATA_DIR = os.getenv("USER_DATA_DIR", "./userdata")
 WABOT_CONFIG_PATH = os.getenv("WABOT_CONFIG_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config/config.json")))
-WABOT_SCHEDULES_PATH = os.getenv("WABOT_SCHEDULES_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config/gws.json")))
+WABOT_SCHEDULES_PATH = os.getenv("WABOT_SCHEDULES_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config/user_schedules.json")))
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 browser = BrowserManager(user_data_dir=USER_DATA_DIR)
@@ -266,6 +266,11 @@ class CallExtractionConfig(BaseModel):
 class SchedulesPayload(BaseModel):
     schedules: List[Dict[str, Any]] = Field(..., description="List of schedule items")
 
+class ScheduleItemPayload(BaseModel):
+    contact_name: str = Field(..., description="Recipient Name or Phone Number")
+    message: str = Field(..., description="Message template content")
+    schedules: List[Dict[str, Any]] = Field(default_factory=list, description="List of time windows and recurrence rules")
+
 # ----------------- UI Dashboard Routes -----------------
 
 @app.get("/", response_class=HTMLResponse, summary="Admin Dashboard UI")
@@ -365,9 +370,54 @@ async def update_schedules(payload: SchedulesPayload):
         return {
             "success": True,
             "count": len(payload.schedules),
-            "message": "Schedules saved successfully to gws.json."
+            "message": "Schedules saved successfully to user_schedules.json."
         }
-    raise HTTPException(status_code=500, detail="Failed to write schedules to gws.json.")
+    raise HTTPException(status_code=500, detail="Failed to write schedules to user_schedules.json.")
+
+@app.post("/api/schedules/add", summary="Add New Schedule to user_schedules.json")
+async def add_schedule(item: ScheduleItemPayload):
+    schedules = load_wabot_schedules()
+    schedules.append(item.dict())
+    if save_wabot_schedules(schedules):
+        return {
+            "success": True,
+            "count": len(schedules),
+            "index": len(schedules) - 1,
+            "schedules": schedules,
+            "message": "New schedule added successfully."
+        }
+    raise HTTPException(status_code=500, detail="Failed to add schedule.")
+
+@app.put("/api/schedules/{index}", summary="Update Schedule by Index in user_schedules.json")
+async def edit_schedule(index: int, item: ScheduleItemPayload):
+    schedules = load_wabot_schedules()
+    if index < 0 or index >= len(schedules):
+        raise HTTPException(status_code=404, detail=f"Schedule index {index} not found.")
+    schedules[index] = item.dict()
+    if save_wabot_schedules(schedules):
+        return {
+            "success": True,
+            "count": len(schedules),
+            "schedules": schedules,
+            "message": f"Schedule #{index} updated successfully."
+        }
+    raise HTTPException(status_code=500, detail="Failed to update schedule.")
+
+@app.delete("/api/schedules/{index}", summary="Delete Schedule by Index in user_schedules.json")
+async def delete_schedule(index: int):
+    schedules = load_wabot_schedules()
+    if index < 0 or index >= len(schedules):
+        raise HTTPException(status_code=404, detail=f"Schedule index {index} not found.")
+    removed = schedules.pop(index)
+    if save_wabot_schedules(schedules):
+        return {
+            "success": True,
+            "count": len(schedules),
+            "removed": removed,
+            "schedules": schedules,
+            "message": f"Schedule #{index} deleted successfully."
+        }
+    raise HTTPException(status_code=500, detail="Failed to delete schedule.")
 
 @app.get("/api/config/call-extraction", summary="Get Call Extraction Configuration")
 async def get_call_extraction_config():

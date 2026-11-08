@@ -86,7 +86,7 @@ class TestDashboardAndSupervisorApi:
         assert r3.json().get("state") == "deprecated"
 
     def test_schedules_api_and_dashboard_integration(self):
-        """Verify GET /api/schedules and dashboard schedules UI components."""
+        """Verify GET /api/schedules and sleek user-friendly schedules UI components (no gws.json leakage)."""
         # Check API response
         r = requests.get(f"{BASE_URL}/api/schedules")
         assert r.status_code == 200
@@ -95,14 +95,49 @@ class TestDashboardAndSupervisorApi:
         assert isinstance(data["schedules"], list)
         assert "summary" in data
 
-        # Check Dashboard HTML contains schedules tab and editor
+        # Check Dashboard HTML contains sleek schedule components
         dash_res = requests.get(f"{BASE_URL}/dashboard")
         assert dash_res.status_code == 200
         html = dash_res.text
         assert "pane-schedules" in html
-        assert "schedules-json-textarea" in html
-        assert "btn-toggle-schedule-editor" in html
+        assert "btn-add-schedule" in html
+        assert "schedule-modal" in html
+        assert "sched-contact-name" in html
         assert "stat-schedules-contacts" in html
+
+        # Strict check: gws.json is NEVER referenced or exposed in dashboard HTML
+        assert "gws.json" not in html
+
+        # Test granular schedule endpoints: add, edit, delete
+        test_item = {
+            "contact_name": "Test Client Alert",
+            "message": "Testing automated notifications",
+            "schedules": [
+                {
+                    "start_time": "10:00",
+                    "end_time": "11:00",
+                    "type": "daily",
+                    "jitter_percentage": 10
+                }
+            ]
+        }
+        # Add
+        r_add = requests.post(f"{BASE_URL}/api/schedules/add", json=test_item)
+        assert r_add.status_code == 200
+        add_data = r_add.json()
+        assert add_data["success"] is True
+        idx = add_data["index"]
+
+        # Edit
+        test_item["message"] = "Updated automated notification text"
+        r_edit = requests.put(f"{BASE_URL}/api/schedules/{idx}", json=test_item)
+        assert r_edit.status_code == 200
+        assert r_edit.json()["success"] is True
+
+        # Delete
+        r_del = requests.delete(f"{BASE_URL}/api/schedules/{idx}")
+        assert r_del.status_code == 200
+        assert r_del.json()["success"] is True
 
     def test_call_extraction_config_api(self):
         """Verify GET /api/config/call-extraction and POST /api/config/call-extraction."""
