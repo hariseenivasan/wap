@@ -54,7 +54,7 @@ class BrowserManager:
             self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
 
             self.status = "STARTING"
-            await self.page.goto("https://web.whatsapp.com/", wait_until="networkidle", timeout=60000)
+            await self.page.goto("https://web.whatsapp.com/", wait_until="domcontentloaded", timeout=60000)
             await self.update_status_check()
 
     async def update_status_check(self) -> str:
