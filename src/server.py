@@ -5,6 +5,8 @@ import configparser
 import xmlrpc.client
 import requests
 import re
+import subprocess
+import signal
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Response, Query, Request, UploadFile, File
@@ -472,15 +474,71 @@ async def update_call_extraction_config(req: CallExtractionConfig):
         return {"success": True, "call_extraction": cfg["call_extraction"]}
     raise HTTPException(status_code=500, detail="Failed to save call extraction configuration.")
 
-# ----------------- Supervisor & WABot Process Management -----------------
+# ----------------- Supervisor & Multi-Process Management -----------------
 
-@app.get("/api/wabot/status", summary="Get WABot Process Status from Supervisor")
-async def get_wabot_status():
+WAP_START_TIME = time.time()
+
+@app.get("/api/supervisor/services", summary="Get All Services Status from Supervisor")
+async def get_supervisor_services():
+    services = []
+    supervisor_available = False
+    error_msg = ""
+    try:
+        client = get_supervisor_client()
+        processes = client.supervisor.getAllProcessInfo()
+        supervisor_available = True
+        has_wap = False
+        for p in processes:
+            uptime = max(0, p["now"] - p["start"]) if p["statename"] == "RUNNING" else 0
+            if p["name"] == "wap":
+                has_wap = True
+            services.append({
+                "name": p["name"],
+                "group": p.get("group", p["name"]),
+                "statename": p["statename"],
+                "state": p.get("state", 0),
+                "pid": p["pid"],
+                "description": p["description"],
+                "uptimeSeconds": uptime,
+                "registeredInSupervisor": True
+            })
+        if not has_wap:
+            services.append({
+                "name": "wap",
+                "group": "wap",
+                "statename": "RUNNING (STANDALONE)",
+                "state": 20,
+                "pid": os.getpid(),
+                "description": "Active as standalone daemon; pending /etc/supervisor/conf.d/wap.conf",
+                "uptimeSeconds": int(time.time() - WAP_START_TIME),
+                "registeredInSupervisor": False
+            })
+    except Exception as e:
+        error_msg = str(e)
+        services.append({
+            "name": "wap",
+            "group": "wap",
+            "statename": "RUNNING",
+            "state": 20,
+            "pid": os.getpid(),
+            "description": f"Running (Supervisor notice: {e})",
+            "uptimeSeconds": int(time.time() - WAP_START_TIME),
+            "registeredInSupervisor": False
+        })
+    
+    return {
+        "supervisorAvailable": supervisor_available,
+        "error": error_msg,
+        "services": services
+    }
+
+@app.get("/api/supervisor/process/{name}/status", summary="Get Process Status from Supervisor")
+async def get_process_status(name: str):
     cfg = load_wabot_config()
     active_engine = cfg.get("engine", "wap")
     try:
         client = get_supervisor_client()
-        info = client.supervisor.getProcessInfo("wabot")
+        info = client.supervisor.getProcessInfo(name)
         uptime = max(0, info["now"] - info["start"]) if info["statename"] == "RUNNING" else 0
         return {
             "name": info["name"],
@@ -489,76 +547,163 @@ async def get_wabot_status():
             "description": info["description"],
             "uptimeSeconds": uptime,
             "engine": active_engine,
-            "supervisorAvailable": True
+            "supervisorAvailable": True,
+            "registeredInSupervisor": True
         }
     except Exception as e:
+        if name == "wap":
+            return {
+                "name": "wap",
+                "statename": "RUNNING (STANDALONE)",
+                "pid": os.getpid(),
+                "description": f"Standalone process (not in supervisor: {e})",
+                "uptimeSeconds": int(time.time() - WAP_START_TIME),
+                "engine": active_engine,
+                "supervisorAvailable": True,
+                "registeredInSupervisor": False
+            }
         return {
-            "name": "wabot",
+            "name": name,
             "statename": "UNKNOWN",
             "pid": 0,
             "description": str(e),
             "uptimeSeconds": 0,
             "engine": active_engine,
-            "supervisorAvailable": False
+            "supervisorAvailable": False,
+            "registeredInSupervisor": False
         }
+
+@app.post("/api/supervisor/process/{name}/{action}", summary="Control Process via Supervisor")
+async def control_process(name: str, action: str):
+    if action not in ["start", "stop", "restart"]:
+        raise HTTPException(status_code=400, detail="Action must be 'start', 'stop', or 'restart'")
+
+    # Special handling for WAP self-control
+    if name == "wap":
+        mgr_script = "/home/erdos1/.gemini/config/skills/supervisor-services-manager/scripts/supervisor_manager.sh"
+        if action == "restart":
+            def async_restart():
+                time.sleep(0.5)
+                for lk in [
+                    os.path.join(CURRENT_DIR, "../session/SingletonLock"),
+                    os.path.join(CURRENT_DIR, "../userdata/SingletonLock")
+                ]:
+                    if os.path.exists(lk):
+                        try:
+                            os.remove(lk)
+                        except Exception:
+                            pass
+                if os.path.exists(mgr_script):
+                    subprocess.run([mgr_script, "restart", "wap"], check=False)
+                else:
+                    try:
+                        c = get_supervisor_client()
+                        c.supervisor.stopProcess("wap")
+                        time.sleep(0.5)
+                        c.supervisor.startProcess("wap")
+                    except Exception:
+                        pass
+            import threading
+            threading.Thread(target=async_restart, daemon=True).start()
+            return {"success": True, "message": "Restarting WAP daemon in background..."}
+        elif action == "stop":
+            def async_stop():
+                time.sleep(0.5)
+                try:
+                    c = get_supervisor_client()
+                    c.supervisor.stopProcess("wap")
+                except Exception:
+                    os.kill(os.getpid(), signal.SIGTERM)
+            import threading
+            threading.Thread(target=async_stop, daemon=True).start()
+            return {"success": True, "message": "Stopping WAP daemon..."}
+
+    try:
+        client = get_supervisor_client()
+        if action == "restart":
+            try:
+                client.supervisor.stopProcess(name)
+            except Exception:
+                pass
+            if name == "wabot":
+                lock = os.path.join(CURRENT_DIR, "../../whatsapp_userdata/SingletonLock")
+                if os.path.exists(lock):
+                    try:
+                        os.remove(lock)
+                    except Exception:
+                        pass
+            time.sleep(0.5)
+            client.supervisor.startProcess(name)
+        elif action == "start":
+            client.supervisor.startProcess(name)
+        elif action == "stop":
+            client.supervisor.stopProcess(name)
+
+        info = client.supervisor.getProcessInfo(name)
+        return {"success": True, "statename": info["statename"], "pid": info["pid"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to {action} {name}: {e}")
+
+@app.get("/api/supervisor/process/{name}/logs", summary="Get Process Logs from Supervisor")
+async def get_process_logs(name: str, bytes_count: int = 8192):
+    try:
+        client = get_supervisor_client()
+        stdout_log, _, _ = client.supervisor.tailProcessStdoutLog(name, 0, bytes_count)
+        stderr_log, _, _ = client.supervisor.tailProcessStderrLog(name, 0, bytes_count)
+        return {
+            "stdout": stdout_log,
+            "stderr": stderr_log,
+            "name": name
+        }
+    except Exception as e:
+        # Fallback to local logs on disk
+        stdout_content, stderr_content = "", ""
+        log_map = {
+            "wabot": ("/home/erdos1/WABot/logs/wabot_out.log", "/home/erdos1/WABot/logs/wabot_err.log"),
+            "wap": ("/home/erdos1/WABot/logs/wap_out.log", "/home/erdos1/WABot/logs/wap_err.log"),
+        }
+        if name in log_map:
+            out_file, err_file = log_map[name]
+            if os.path.exists(out_file):
+                try:
+                    with open(out_file, "r", errors="ignore") as f:
+                        lines = f.readlines()
+                        stdout_content = "".join(lines[-250:])
+                except Exception:
+                    pass
+            if os.path.exists(err_file):
+                try:
+                    with open(err_file, "r", errors="ignore") as f:
+                        lines = f.readlines()
+                        stderr_content = "".join(lines[-250:])
+                except Exception:
+                    pass
+        return {
+            "stdout": stdout_content or f"[Supervisor Notice]: Tail via supervisor failed: {e}",
+            "stderr": stderr_content,
+            "name": name
+        }
+
+# Backward compatibility routes for WABot
+@app.get("/api/wabot/status", summary="Get WABot Process Status from Supervisor")
+async def get_wabot_status():
+    return await get_process_status("wabot")
 
 @app.post("/api/wabot/restart", summary="Restart WABot Service under Supervisor")
 async def restart_wabot():
-    try:
-        client = get_supervisor_client()
-        try:
-            client.supervisor.stopProcess("wabot")
-        except Exception:
-            pass
-        # Clear stale locks
-        lock = os.path.join(CURRENT_DIR, "../../whatsapp_userdata/SingletonLock")
-        if os.path.exists(lock):
-            try:
-                os.remove(lock)
-            except Exception:
-                pass
-        time.sleep(0.5)
-        client.supervisor.startProcess("wabot")
-        info = client.supervisor.getProcessInfo("wabot")
-        return {"success": True, "statename": info["statename"], "pid": info["pid"]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to restart wabot: {e}")
+    return await control_process("wabot", "restart")
 
 @app.post("/api/wabot/start", summary="Start WABot Service under Supervisor")
 async def start_wabot():
-    try:
-        client = get_supervisor_client()
-        client.supervisor.startProcess("wabot")
-        info = client.supervisor.getProcessInfo("wabot")
-        return {"success": True, "statename": info["statename"], "pid": info["pid"]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start wabot: {e}")
+    return await control_process("wabot", "start")
 
 @app.post("/api/wabot/stop", summary="Stop WABot Service under Supervisor")
 async def stop_wabot():
-    try:
-        client = get_supervisor_client()
-        client.supervisor.stopProcess("wabot")
-        info = client.supervisor.getProcessInfo("wabot")
-        return {"success": True, "statename": info["statename"]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to stop wabot: {e}")
+    return await control_process("wabot", "stop")
 
 @app.get("/api/wabot/logs", summary="Get Latest WABot Logs from Supervisor")
 async def get_wabot_logs(bytes_count: int = 4096):
-    try:
-        client = get_supervisor_client()
-        stdout_log, _, _ = client.supervisor.tailProcessStdoutLog("wabot", 0, bytes_count)
-        stderr_log, _, _ = client.supervisor.tailProcessStderrLog("wabot", 0, bytes_count)
-        return {
-            "stdout": stdout_log,
-            "stderr": stderr_log
-        }
-    except Exception as e:
-        return {
-            "stdout": f"[Log Error]: Could not read logs from supervisor: {e}",
-            "stderr": ""
-        }
+    return await get_process_logs("wabot", bytes_count)
 
 # ----------------- WhatsApp Core Routes -----------------
 

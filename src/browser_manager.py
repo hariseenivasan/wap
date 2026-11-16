@@ -3,6 +3,7 @@ import sys
 import time
 import asyncio
 import re
+import subprocess
 from typing import Dict, List, Optional, Any
 from playwright.async_api import async_playwright, BrowserContext, Page, Locator
 
@@ -28,18 +29,28 @@ class BrowserManager:
     async def initialize(self):
         """Launches the persistent browser context and opens WhatsApp Web."""
         async with self.lock:
-            if self.page is not None and not self.page.is_closed():
-                return
+            await self._init_browser_internal()
 
-            os.makedirs(self.user_data_dir, exist_ok=True)
-            lockfile = os.path.join(self.user_data_dir, "SingletonLock")
-            if os.path.exists(lockfile):
-                try:
-                    os.remove(lockfile)
-                except Exception:
-                    pass
+    async def _ensure_initialized_locked(self):
+        """Initializes browser if not already active. Expects self.lock to be held."""
+        if self.page is None or self.page.is_closed():
+            await self._init_browser_internal()
 
-            self.playwright = await async_playwright().start()
+    async def _init_browser_internal(self):
+        if self.page is not None and not self.page.is_closed():
+            return
+
+        os.makedirs(self.user_data_dir, exist_ok=True)
+        lockfile = os.path.join(self.user_data_dir, "SingletonLock")
+        if os.path.exists(lockfile):
+            try:
+                os.remove(lockfile)
+            except Exception:
+                pass
+
+        try:
+            if not self.playwright:
+                self.playwright = await async_playwright().start()
             self.context = await self.playwright.chromium.launch_persistent_context(
                 user_data_dir=self.user_data_dir,
                 headless=True,
@@ -51,11 +62,37 @@ class BrowserManager:
                 user_agent=self.user_agent,
                 viewport={"width": 1280, "height": 800},
             )
-            self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
+        except Exception as e:
+            err_msg = str(e)
+            if "Executable doesn't exist" in err_msg or "playwright install" in err_msg:
+                print(f"[WAP Auto-Heal] Missing Playwright browser executable. Auto-installing chromium...")
+                proc = subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], capture_output=True, text=True)
+                print(f"[WAP Auto-Heal] Install finished with code {proc.returncode}")
+                if self.playwright:
+                    try:
+                        await self.playwright.stop()
+                    except Exception:
+                        pass
+                self.playwright = await async_playwright().start()
+                self.context = await self.playwright.chromium.launch_persistent_context(
+                    user_data_dir=self.user_data_dir,
+                    headless=True,
+                    args=[
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-blink-features=AutomationControlled",
+                    ],
+                    user_agent=self.user_agent,
+                    viewport={"width": 1280, "height": 800},
+                )
+            else:
+                raise
 
-            self.status = "STARTING"
-            await self.page.goto("https://web.whatsapp.com/", wait_until="domcontentloaded", timeout=60000)
-            await self.update_status_check()
+        self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
+
+        self.status = "STARTING"
+        await self.page.goto("https://web.whatsapp.com/", wait_until="domcontentloaded", timeout=60000)
+        await self.update_status_check()
 
     async def update_status_check(self) -> str:
         """Evaluates whether the session is authenticated, at the QR screen, or starting."""
@@ -103,6 +140,7 @@ class BrowserManager:
     async def get_screenshot(self) -> bytes:
         """Captures a PNG screenshot of the current browser viewport."""
         async with self.lock:
+            await self._ensure_initialized_locked()
             if not self.page:
                 raise RuntimeError("Browser not initialized")
             await self.dismiss_modals()
@@ -111,6 +149,7 @@ class BrowserManager:
     async def get_qr_screenshot(self) -> bytes:
         """Captures a PNG screenshot of the QR code canvas."""
         async with self.lock:
+            await self._ensure_initialized_locked()
             if not self.page:
                 raise RuntimeError("Browser not initialized")
             canvas = self.page.locator("canvas")
@@ -172,6 +211,7 @@ class BrowserManager:
         the generated 8-character pairing code.
         """
         async with self.lock:
+            await self._ensure_initialized_locked()
             if not self.page or self.page.is_closed():
                 raise RuntimeError("Browser not initialized")
 
@@ -212,7 +252,7 @@ class BrowserManager:
 
             phone_input = self.page.locator("input[aria-label*='phone number' i], input[type='text']").first
             if not await phone_input.is_visible():
-                await self.page.goto("https://web.whatsapp.com/", wait_until="networkidle", timeout=45000)
+                await self.page.goto("https://web.whatsapp.com/", wait_until="domcontentloaded", timeout=45000)
                 await asyncio.sleep(2)
                 return {
                     "success": False,

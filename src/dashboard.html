@@ -702,7 +702,7 @@
     <!-- Navigation Tabs -->
     <nav class="tab-nav">
       <button class="tab-btn active" onclick="switchTab('status')">📊 Live Telemetry</button>
-      <button class="tab-btn" onclick="switchTab('wabot')">🤖 WABot Service & Logs</button>
+      <button class="tab-btn" onclick="switchTab('wabot')">🛠️ Supervisor & Services</button>
       <button class="tab-btn" onclick="switchTab('schedules')">📅 Message Schedules</button>
       <button class="tab-btn" onclick="switchTab('config')">⚙️ Engine & Configuration</button>
       <button class="tab-btn" onclick="switchTab('calls')">📞 Calls &amp; Ad-Hoc Workspace</button>
@@ -748,14 +748,16 @@
       </div>
     </section>
 
-    <!-- TAB 2: WABOT SERVICE & LOGS (SUPERVISOR INTEGRATION) -->
+    <!-- TAB 2: SUPERVISOR & SERVICES MANAGEMENT -->
     <section id="pane-wabot" class="tab-pane">
       <div class="card-box">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
           <div>
-            <h3 style="margin:0;">Supervisor Process Management: <code>wabot</code></h3>
+            <h3 style="margin:0; display:flex; align-items:center; gap:0.5rem;">
+              <span>🛠️</span> Supervisor Services Management
+            </h3>
             <p style="color:var(--text-muted); font-size:0.85rem; margin:0.3rem 0 0 0;">
-              Manage the background WABot daemon orchestrated by system Supervisor (Port 9001).
+              Manage and orchestrate all background services on local port 9001 (<code>wabot</code>, <code>wap</code>, <code>wabot-fileserver</code>).
             </p>
           </div>
           <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -765,44 +767,55 @@
           </div>
         </div>
 
-        <div class="stats-grid" style="margin-bottom:1.25rem;">
-          <div class="stat-card">
-            <div class="stat-label">Process State</div>
-            <div class="stat-value" id="wabot-stat-state" style="color:#34d399;">RUNNING</div>
+        <!-- Supervisor Global Status Bar -->
+        <div style="display:flex; align-items:center; justify-content:space-between; background:#090d16; border:1px solid var(--border-color); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.25rem;">
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <span style="font-size:0.9rem; font-weight:600; color:var(--text-muted);">Supervisor Connection:</span>
+            <span id="wabot-stat-supervisor" style="font-weight:700; color:#34d399;">CONNECTED (Port 9001)</span>
           </div>
-          <div class="stat-card">
-            <div class="stat-label">Process PID</div>
-            <div class="stat-value" id="wabot-stat-pid">10912</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Process Uptime</div>
-            <div class="stat-value" id="wabot-stat-uptime">0s</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Supervisor Connection</div>
-            <div class="stat-value" id="wabot-stat-supervisor" style="font-size:1.1rem; color:#34d399;">CONNECTED (RPC2)</div>
+          <button onclick="loadSupervisorServices()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">
+            🔄 Refresh Services
+          </button>
+        </div>
+
+        <!-- Hidden backward-compatibility elements for tests/scripts -->
+        <div style="display:none;">
+          <span id="wabot-stat-state">RUNNING</span>
+          <span id="wabot-stat-pid">-</span>
+          <span id="wabot-stat-uptime">-</span>
+        </div>
+
+        <!-- WAP Registration Notice Banner (if standalone) -->
+        <div id="wap-registration-banner" style="display:none; background:rgba(245,158,11,0.12); border:1px solid #f59e0b; border-radius:8px; padding:0.85rem 1.1rem; margin-bottom:1.25rem; font-size:0.85rem; color:#fde68a;">
+          <div style="display:flex; align-items:flex-start; gap:0.6rem;">
+            <span style="font-size:1.1rem;">💡</span>
+            <div>
+              <strong>Supervisor Configuration Notice:</strong> <code>wap</code> is currently active. To permanently register <code>wap.conf</code> in Supervisor so it autostarts on system/container boot, run from your interactive terminal:
+              <div style="background:#090d16; border:1px solid #334155; border-radius:6px; padding:0.5rem 0.75rem; margin-top:0.4rem; font-family:monospace; color:#38bdf8; word-break:break-all; user-select:all;">
+                sudo mount -o remount,rw /etc &amp;&amp; sudo cp /home/erdos1/WABot/wap.conf /etc/supervisor/conf.d/wap.conf &amp;&amp; sudo supervisorctl reread &amp;&amp; sudo supervisorctl update &amp;&amp; sudo mount -o remount,ro /etc
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Action Controls -->
-        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.5rem; align-items:center;">
-          <button id="btn-restart-wabot" onclick="controlWabot('restart')" style="background:#f59e0b; border-color:#f59e0b; padding:0.5rem 1.25rem; font-weight:700;">
-            🔄 Restart WABot
-          </button>
-          <button id="btn-start-wabot" onclick="controlWabot('start')" style="background:#10b981; border-color:#10b981; padding:0.5rem 1.25rem; font-weight:700;">
-            ▶️ Start WABot
-          </button>
-          <button id="btn-stop-wabot" onclick="controlWabot('stop')" class="secondary" style="background:#ef4444; border-color:#ef4444; color:#fff; padding:0.5rem 1.25rem; font-weight:700;">
-            ⏹️ Stop WABot
-          </button>
-          <span id="wabot-action-feedback" style="font-size:0.9rem; font-weight:600; margin-left:0.5rem;"></span>
+        <!-- Dynamic Services Grid -->
+        <div id="services-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+          <!-- Dynamically populated by loadSupervisorServices() -->
         </div>
+
+        <!-- Action Feedback -->
+        <div id="supervisor-action-feedback" style="font-size:0.9rem; font-weight:600; margin-bottom:1rem; min-height:1.2rem;"></div>
 
         <!-- Live Log Console -->
         <div style="background:#090d16; border:1px solid var(--border-color); border-radius:8px; padding:1rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
             <div style="display:flex; align-items:center; gap:0.75rem;">
-              <span style="font-weight:700; font-size:0.9rem; color:#38bdf8;">📜 Live WABot Daemon Logs</span>
+              <span style="font-weight:700; font-size:0.9rem; color:#38bdf8;">📜 Live Service Logs</span>
+              <select id="supervisor-log-service" onchange="loadSupervisorLogs()" style="background:#1e293b; color:#fff; border:1px solid var(--border-color); padding:0.25rem 0.6rem; font-size:0.82rem; border-radius:6px; outline:none; margin:0;">
+                <option value="wabot">wabot (Scheduler Daemon)</option>
+                <option value="wap" selected>wap (Playwright REST Engine)</option>
+                <option value="wabot-fileserver">wabot-fileserver (Port 9002)</option>
+              </select>
               <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
                 <input type="checkbox" id="wabot-log-autorefresh" checked style="margin:0;">
                 Auto-refresh (3s)
@@ -814,14 +827,14 @@
                 <button type="button" class="log-tab-btn" id="btn-log-stdout" onclick="setLogView('stdout')">STDOUT (Live)</button>
                 <button type="button" class="log-tab-btn" id="btn-log-stderr" onclick="setLogView('stderr')">STDERR (Buffer)</button>
               </div>
-              <button onclick="loadWabotLogs()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🔄 Fetch</button>
-              <button onclick="clearWabotConsole()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🧹 Clear</button>
+              <button onclick="loadSupervisorLogs()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🔄 Fetch</button>
+              <button onclick="clearSupervisorConsole()" class="secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">🧹 Clear</button>
             </div>
           </div>
           <div id="stderr-notice" style="display:none; font-size:0.8rem; color:#94a3b8; background:rgba(30,41,59,0.5); padding:0.5rem 0.75rem; border-radius:4px; margin-bottom:0.5rem; border-left:3px solid #f59e0b;">
-            💡 <strong>Historical Stderr Buffer:</strong> Historical messages (such as <em>Connection refused</em> during server restarts/tunnel re-openings) are held in the supervisor buffer. As long as Process State is <strong>RUNNING</strong> and STDOUT shows <strong>WORKING | Authenticated: True</strong>, WABot is actively healthy and connected.
+            💡 <strong>Historical Stderr Buffer:</strong> Historical messages (such as <em>Connection refused</em> during server restarts) are held in the log buffer. As long as Process State is <strong>RUNNING</strong>, the service is actively healthy.
           </div>
-          <pre id="wabot-log-terminal" style="background:#05070d; color:#e2e8f0; font-family:'Courier New', monospace; font-size:0.82rem; padding:1rem; border-radius:6px; max-height:400px; overflow-y:auto; white-space:pre-wrap; word-break:break-all; border:1px solid #1e293b; margin:0;">Connecting to supervisor logs...</pre>
+          <pre id="wabot-log-terminal" style="background:#05070d; color:#e2e8f0; font-family:'Courier New', monospace; font-size:0.82rem; padding:1rem; border-radius:6px; max-height:400px; overflow-y:auto; white-space:pre-wrap; word-break:break-all; border:1px solid #1e293b; margin:0;">Connecting to service logs...</pre>
         </div>
       </div>
     </section>
@@ -1654,8 +1667,102 @@
           superEl.textContent = data.supervisorAvailable ? 'CONNECTED (Port 9001)' : 'OFFLINE';
           superEl.style.color = data.supervisorAvailable ? '#34d399' : '#ef4444';
         }
+
+        await loadSupervisorServices();
       } catch (err) {
         console.warn("Wabot status fetch error:", err);
+      }
+    }
+
+    async function loadSupervisorServices() {
+      try {
+        const res = await fetch('/api/supervisor/services');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const superEl = document.getElementById('wabot-stat-supervisor');
+        if (superEl) {
+          superEl.textContent = data.supervisorAvailable ? 'CONNECTED (Port 9001)' : 'OFFLINE';
+          superEl.style.color = data.supervisorAvailable ? '#34d399' : '#ef4444';
+        }
+
+        const grid = document.getElementById('services-cards-grid');
+        const banner = document.getElementById('wap-registration-banner');
+        
+        let hasWapInSupervisor = false;
+        if (data.services && Array.isArray(data.services)) {
+          data.services.forEach(s => {
+            if (s.name === 'wap' && s.registeredInSupervisor) {
+              hasWapInSupervisor = true;
+            }
+          });
+        }
+        if (banner) {
+          banner.style.display = hasWapInSupervisor ? 'none' : 'block';
+        }
+
+        if (grid && data.services && Array.isArray(data.services)) {
+          grid.innerHTML = data.services.map(s => {
+            const isRunning = (s.statename || '').toUpperCase().includes('RUNNING');
+            const stateBg = isRunning ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+            const stateColor = isRunning ? '#34d399' : '#f87171';
+            const stateBorder = isRunning ? '#10b981' : '#ef4444';
+            
+            const up = s.uptimeSeconds || 0;
+            const hours = Math.floor(up / 3600);
+            const mins = Math.floor((up % 3600) / 60);
+            const secs = up % 60;
+            const upStr = hours > 0 ? `${hours}h ${mins}m ${secs}s` : (mins > 0 ? `${mins}m ${secs}s` : `${secs}s`);
+
+            let desc = 'Service Process';
+            let icon = '⚙️';
+            if (s.name === 'wabot') { desc = 'Autonomous Scheduler Daemon'; icon = '🤖'; }
+            else if (s.name === 'wap') { desc = 'Playwright REST API & Dashboard'; icon = '🌐'; }
+            else if (s.name === 'wabot-fileserver') { desc = 'File Server (Port 9002)'; icon = '📁'; }
+
+            return `
+              <div class="stat-card" style="display:flex; flex-direction:column; justify-content:space-between; text-align:left; padding:1.1rem; border:1px solid var(--border-color); border-radius:8px; background:#090d16;">
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+                    <div>
+                      <h4 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.4rem;">
+                        <span>${icon}</span>
+                        <code style="color:#38bdf8;">${s.name}</code>
+                      </h4>
+                      <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.2rem;">${desc}</div>
+                    </div>
+                    <span style="background:${stateBg}; color:${stateColor}; border:1px solid ${stateBorder}; font-size:0.75rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px;">
+                      ${s.statename}
+                    </span>
+                  </div>
+
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.4rem; font-size:0.8rem; background:#0f172a; padding:0.5rem 0.75rem; border-radius:6px; margin-bottom:1rem;">
+                    <div><span style="color:var(--text-muted);">PID:</span> <strong>${s.pid || '-'}</strong></div>
+                    <div><span style="color:var(--text-muted);">Uptime:</span> <strong>${upStr}</strong></div>
+                    <div style="grid-column:span 2;"><span style="color:var(--text-muted);">Mode:</span> <strong>${s.registeredInSupervisor ? 'Supervisor (Autostart)' : 'Standalone / Auto-heal'}</strong></div>
+                  </div>
+                </div>
+
+                <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+                  <button onclick="controlSupervisorProcess('${s.name}', 'restart')" style="background:#f59e0b; border-color:#f59e0b; padding:0.3rem 0.75rem; font-size:0.78rem; font-weight:700; margin:0;">
+                    🔄 Restart
+                  </button>
+                  <button onclick="controlSupervisorProcess('${s.name}', 'start')" style="background:#10b981; border-color:#10b981; padding:0.3rem 0.75rem; font-size:0.78rem; font-weight:700; margin:0;">
+                    ▶️ Start
+                  </button>
+                  <button onclick="controlSupervisorProcess('${s.name}', 'stop')" class="secondary" style="background:#ef4444; border-color:#ef4444; color:#fff; padding:0.3rem 0.75rem; font-size:0.78rem; font-weight:700; margin:0;">
+                    ⏹️ Stop
+                  </button>
+                  <button onclick="selectServiceForLogs('${s.name}')" class="secondary" style="padding:0.3rem 0.75rem; font-size:0.78rem; margin:0;">
+                    📜 Logs
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        console.warn("Supervisor services fetch error:", err);
       }
     }
 
@@ -1704,45 +1811,86 @@
       }
     }
 
-    async function loadWabotLogs() {
+    function selectServiceForLogs(serviceName) {
+      const sel = document.getElementById('supervisor-log-service');
+      if (sel) {
+        sel.value = serviceName;
+      }
+      loadSupervisorLogs();
+    }
+
+    async function loadSupervisorLogs() {
+      const sel = document.getElementById('supervisor-log-service');
+      const targetService = sel ? sel.value : 'wap';
       try {
-        const res = await fetch('/api/wabot/logs?bytes_count=8192');
+        const res = await fetch(`/api/supervisor/process/${targetService}/logs?bytes_count=16384`);
         if (!res.ok) return;
         const data = await res.json();
         cachedStdout = data.stdout || '';
         cachedStderr = data.stderr || '';
         renderLogTerminal();
       } catch (err) {
-        console.warn("Wabot log tail error:", err);
+        console.warn("Supervisor log tail error:", err);
+      }
+    }
+
+    async function loadWabotLogs() {
+      await loadSupervisorLogs();
+    }
+
+    async function controlSupervisorProcess(name, action) {
+      const feedback = document.getElementById('supervisor-action-feedback');
+      if (feedback) {
+        feedback.style.color = '#38bdf8';
+        feedback.textContent = `Executing ${action} for ${name}...`;
+      }
+      try {
+        const res = await fetch(`/api/supervisor/process/${name}/${action}`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          if (feedback) {
+            feedback.style.color = '#34d399';
+            feedback.textContent = `✅ Successfully executed ${action} for ${name}!`;
+          }
+          if (name === 'wap' && action === 'restart') {
+            if (feedback) feedback.textContent = '🔄 Restarting WAP engine... reconnecting in 3 seconds';
+            setTimeout(async () => {
+              await loadSupervisorServices();
+              await loadSupervisorLogs();
+              if (feedback) feedback.textContent = '✅ WAP reconnected successfully!';
+              setTimeout(() => { if (feedback) feedback.textContent = ''; }, 3000);
+            }, 3000);
+            return;
+          }
+          await loadSupervisorServices();
+          await loadWabotStatus();
+          await loadSupervisorLogs();
+          setTimeout(() => { if (feedback) feedback.textContent = ''; }, 3000);
+        } else {
+          if (feedback) {
+            feedback.style.color = '#ef4444';
+            feedback.textContent = `❌ Failed: ${data.detail || data.error || 'Unknown error'}`;
+          }
+        }
+      } catch (err) {
+        if (feedback) {
+          feedback.style.color = '#ef4444';
+          feedback.textContent = `❌ Request error: ${err.message}`;
+        }
       }
     }
 
     async function controlWabot(action) {
-      const feedback = document.getElementById('wabot-action-feedback');
-      feedback.style.color = '#38bdf8';
-      feedback.textContent = `Executing ${action}...`;
-      try {
-        const res = await fetch(`/api/wabot/${action}`, { method: 'POST' });
-        const data = await res.json();
-        if (res.ok) {
-          feedback.style.color = '#34d399';
-          feedback.textContent = `✅ Successfully executed ${action}!`;
-          await loadWabotStatus();
-          await loadWabotLogs();
-          setTimeout(() => { feedback.textContent = ''; }, 3000);
-        } else {
-          feedback.style.color = '#ef4444';
-          feedback.textContent = `❌ Failed: ${data.detail || data.error || 'Unknown error'}`;
-        }
-      } catch (err) {
-        feedback.style.color = '#ef4444';
-        feedback.textContent = `❌ Request error: ${err.message}`;
-      }
+      await controlSupervisorProcess('wabot', action);
+    }
+
+    function clearSupervisorConsole() {
+      const term = document.getElementById('wabot-log-terminal');
+      if (term) term.textContent = '[Console cleared]';
     }
 
     function clearWabotConsole() {
-      const term = document.getElementById('wabot-log-terminal');
-      if (term) term.textContent = '[Console cleared]';
+      clearSupervisorConsole();
     }
 
     async function loadConfigData() {
