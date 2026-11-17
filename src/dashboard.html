@@ -746,6 +746,71 @@
           <img id="viewport-stream" class="img-preview" src="/api/screenshot" alt="Internal Browser Viewport">
         </div>
       </div>
+
+      <!-- Engine Performance & Resource Benchmark (WAP vs WAHA) -->
+      <div class="card-box" style="margin-top:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+          <div>
+            <h3 style="margin:0; display:flex; align-items:center; gap:0.5rem;">
+              <span>⚔️</span> Engine Benchmark &amp; Resource Comparison
+            </h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0.2rem 0 0 0;">
+              Side-by-side performance telemetry comparing WAP (Playwright Direct) and WAHA (HTTP API) running in Docker.
+            </p>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <button onclick="runLiveBenchmark()" style="background:#0284c7; border-color:#0284c7; padding:0.4rem 1rem; font-size:0.85rem; font-weight:700;">
+              ⚡ Run Live Benchmark
+            </button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem;">
+          <!-- WAP Card -->
+          <div style="background:#090d16; border:1px solid #10b981; border-radius:8px; padding:1.1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <h4 style="margin:0; color:#34d399; font-size:1.1rem; display:flex; align-items:center; gap:0.4rem;">
+                <span>🌐</span> WAP Engine (Playwright)
+              </h4>
+              <span id="bm-wap-status" class="badge" style="background:rgba(16,185,129,0.2); color:#34d399; border:1px solid #10b981;">ONLINE</span>
+            </div>
+            <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">
+              Port: <code>3001</code> | Architecture: <strong>Direct Playwright Headless DOM</strong>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; font-size:0.85rem; background:#0f172a; padding:0.75rem; border-radius:6px;">
+              <div><span style="color:var(--text-muted);">API Latency:</span> <strong id="bm-wap-latency">-- ms</strong></div>
+              <div><span style="color:var(--text-muted);">Memory (RAM):</span> <strong id="bm-wap-mem">-- MB</strong></div>
+              <div><span style="color:var(--text-muted);">CPU Usage:</span> <strong id="bm-wap-cpu">-- %</strong></div>
+              <div><span style="color:var(--text-muted);">Session Auth:</span> <strong id="bm-wap-auth">--</strong></div>
+            </div>
+            <div style="margin-top:0.6rem; font-size:0.78rem; color:#94a3b8;">
+              💡 <em>WYSIWYT screenshot proofing, live DOM inspector, zero third-party reverse-engineered bridge risk.</em>
+            </div>
+          </div>
+
+          <!-- WAHA Card -->
+          <div style="background:#090d16; border:1px solid #38bdf8; border-radius:8px; padding:1.1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <h4 style="margin:0; color:#38bdf8; font-size:1.1rem; display:flex; align-items:center; gap:0.4rem;">
+                <span>⚡</span> WAHA Engine (HTTP API)
+              </h4>
+              <span id="bm-waha-status" class="badge" style="background:rgba(56,189,248,0.2); color:#38bdf8; border:1px solid #0284c7;">ONLINE</span>
+            </div>
+            <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">
+              Port: <code>3000</code> | Architecture: <strong>Node.js + whatsapp-web.js bridge</strong>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; font-size:0.85rem; background:#0f172a; padding:0.75rem; border-radius:6px;">
+              <div><span style="color:var(--text-muted);">API Latency:</span> <strong id="bm-waha-latency">-- ms</strong></div>
+              <div><span style="color:var(--text-muted);">Memory (RAM):</span> <strong id="bm-waha-mem">-- MB</strong></div>
+              <div><span style="color:var(--text-muted);">CPU Usage:</span> <strong id="bm-waha-cpu">-- %</strong></div>
+              <div><span style="color:var(--text-muted);">Session Auth:</span> <strong id="bm-waha-auth">--</strong></div>
+            </div>
+            <div style="margin-top:0.6rem; font-size:0.78rem; color:#94a3b8;">
+              💡 <em>Industry-standard WAHA REST endpoints, webhook event subscriptions, multi-session ready.</em>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- TAB 2: SUPERVISOR & SERVICES MANAGEMENT -->
@@ -1586,8 +1651,62 @@
         if (!document.getElementById('confirm-modal').style.display || document.getElementById('confirm-modal').style.display === 'none') {
           selectEngineOption(activeEngine);
         }
+
+        await runLiveBenchmark();
       } catch (err) {
         console.warn("Status poll error:", err);
+      }
+    }
+
+    async function runLiveBenchmark() {
+      try {
+        const res = await fetch('/api/benchmark');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        // Update WAP Card
+        const wap = data.wap || {};
+        const wapStatusEl = document.getElementById('bm-wap-status');
+        if (wapStatusEl) {
+          wapStatusEl.textContent = wap.online ? wap.status : 'OFFLINE';
+          wapStatusEl.style.background = wap.online ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)';
+          wapStatusEl.style.color = wap.online ? '#34d399' : '#f87171';
+          wapStatusEl.style.borderColor = wap.online ? '#10b981' : '#ef4444';
+        }
+        const wapLat = document.getElementById('bm-wap-latency');
+        if (wapLat) wapLat.textContent = `${wap.latencyMs || 0} ms`;
+        const wapMem = document.getElementById('bm-wap-mem');
+        if (wapMem) wapMem.textContent = wap.memory || 'N/A';
+        const wapCpu = document.getElementById('bm-wap-cpu');
+        if (wapCpu) wapCpu.textContent = wap.cpu || 'N/A';
+        const wapAuth = document.getElementById('bm-wap-auth');
+        if (wapAuth) {
+          wapAuth.textContent = wap.authenticated ? '✅ Authenticated' : '⏳ Awaiting Login';
+          wapAuth.style.color = wap.authenticated ? '#34d399' : '#fbbf24';
+        }
+
+        // Update WAHA Card
+        const waha = data.waha || {};
+        const wahaStatusEl = document.getElementById('bm-waha-status');
+        if (wahaStatusEl) {
+          wahaStatusEl.textContent = waha.online ? waha.status : 'OFFLINE';
+          wahaStatusEl.style.background = waha.online ? 'rgba(56,189,248,0.2)' : 'rgba(239,68,68,0.2)';
+          wahaStatusEl.style.color = waha.online ? '#38bdf8' : '#f87171';
+          wahaStatusEl.style.borderColor = waha.online ? '#0284c7' : '#ef4444';
+        }
+        const wahaLat = document.getElementById('bm-waha-latency');
+        if (wahaLat) wahaLat.textContent = `${waha.latencyMs || 0} ms`;
+        const wahaMem = document.getElementById('bm-waha-mem');
+        if (wahaMem) wahaMem.textContent = waha.memory || 'N/A';
+        const wahaCpu = document.getElementById('bm-waha-cpu');
+        if (wahaCpu) wahaCpu.textContent = waha.cpu || 'N/A';
+        const wahaAuth = document.getElementById('bm-waha-auth');
+        if (wahaAuth) {
+          wahaAuth.textContent = waha.authenticated ? '✅ Authenticated' : (waha.online ? '⏳ Awaiting Scan' : '❌ Offline');
+          wahaAuth.style.color = waha.authenticated ? '#34d399' : (waha.online ? '#fbbf24' : '#f87171');
+        }
+      } catch (e) {
+        console.warn("Benchmark error:", e);
       }
     }
 

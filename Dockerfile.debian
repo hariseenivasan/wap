@@ -1,0 +1,28 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system utilities, curl, git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Playwright and its Linux OS-level dependencies via official playwright CLI
+RUN playwright install --with-deps chromium
+
+# Copy application source
+COPY src/ ./src/
+COPY examples/ ./examples/
+
+ENV PYTHONUNBUFFERED=1
+ENV PORT=3001
+ENV USER_DATA_DIR=/app/userdata
+
+EXPOSE 3001
+
+CMD ["uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "3001"]

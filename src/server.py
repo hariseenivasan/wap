@@ -757,6 +757,90 @@ async def get_status(engine: Optional[str] = Query(None, pattern="^(wap|waha)$")
         "uptimeSeconds": int(time.time() - browser.start_time)
     }
 
+@app.get("/api/benchmark", summary="Live Performance & Resource Comparison between WAP and WAHA")
+async def get_benchmark():
+    cfg = load_wabot_config()
+    waha_url = cfg.get("waha_url", "http://127.0.0.1:3000").rstrip("/")
+    wap_url = cfg.get("wap_url", "http://127.0.0.1:3001").rstrip("/")
+    
+    # 1. WAP Ping & Latency
+    wap_t0 = time.perf_counter()
+    wap_online = False
+    wap_auth = False
+    wap_status = "UNKNOWN"
+    try:
+        r_wap = requests.get(f"{wap_url}/api/status", timeout=2)
+        wap_latency = round((time.perf_counter() - wap_t0) * 1000, 2)
+        if r_wap.status_code == 200:
+            wap_data = r_wap.json()
+            wap_online = True
+            wap_status = wap_data.get("status", "UNKNOWN")
+            wap_auth = wap_data.get("authenticated", False)
+    except Exception:
+        wap_latency = 0.0
+
+    # 2. WAHA Ping & Latency
+    waha_t0 = time.perf_counter()
+    waha_online = False
+    waha_auth = False
+    waha_status = "UNKNOWN"
+    try:
+        r_waha = requests.get(f"{waha_url}/api/sessions/default", timeout=2)
+        waha_latency = round((time.perf_counter() - waha_t0) * 1000, 2)
+        if r_waha.status_code == 200:
+            waha_data = r_waha.json()
+            waha_online = True
+            waha_status = waha_data.get("status", "UNKNOWN")
+            waha_auth = (waha_status == "WORKING")
+    except Exception:
+        waha_latency = 0.0
+
+    # 3. Docker stats for container resources
+    stats = {"wap": {"mem": "N/A", "cpu": "N/A"}, "waha": {"mem": "N/A", "cpu": "N/A"}}
+    try:
+        cmd = ["docker", "stats", "--no-stream", "--format", "{{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}"]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+        if proc.returncode == 0:
+            for line in proc.stdout.strip().splitlines():
+                parts = line.split("\t")
+                if len(parts) >= 3:
+                    cname = parts[0].strip()
+                    if "wap" in cname:
+                        stats["wap"] = {"mem": parts[1].strip(), "cpu": parts[2].strip()}
+                    elif "waha" in cname:
+                        stats["waha"] = {"mem": parts[1].strip(), "cpu": parts[2].strip()}
+    except Exception:
+        pass
+
+    return {
+        "timestamp": int(time.time()),
+        "activeEngine": cfg.get("engine", "wap"),
+        "wap": {
+            "name": "WAP (Playwright Direct Web)",
+            "port": 3001,
+            "online": wap_online,
+            "status": wap_status,
+            "authenticated": wap_auth,
+            "latencyMs": wap_latency,
+            "memory": stats["wap"]["mem"],
+            "cpu": stats["wap"]["cpu"],
+            "architecture": "Headless Chromium + Playwright DOM Automation",
+            "features": "WYSIWYT screenshot proofing, phone-code pairing, zero third-party bridge risk"
+        },
+        "waha": {
+            "name": "WAHA (WhatsApp HTTP API)",
+            "port": 3000,
+            "online": waha_online,
+            "status": waha_status,
+            "authenticated": waha_auth,
+            "latencyMs": waha_latency,
+            "memory": stats["waha"]["mem"],
+            "cpu": stats["waha"]["cpu"],
+            "architecture": "Node.js + whatsapp-web.js reverse-engineered bridge",
+            "features": "Standard WAHA endpoints, webhook streaming"
+        }
+    }
+
 @app.get("/api/screenshot", summary="Live Viewport Screenshot")
 async def get_screenshot():
     try:
